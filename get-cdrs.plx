@@ -6,7 +6,7 @@
 
 # Needs Moxad::Config found on github.com under user rjwhite
 
-# getcdrs --help
+# get-cdrs.plx --help
 
 # Copyright 2017 RJ White
 # This program is free software: you can redistribute it and/or modify
