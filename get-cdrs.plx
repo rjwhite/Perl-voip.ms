@@ -27,14 +27,13 @@ use strict ;
 use warnings ;
 use lib "/usr/local/Moxad/lib" ;
 use Moxad::Config ;
-use Data::Dumper ;
 use WWW::Curl::Easy ;
 use JSON ;
 use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.2" ;
+my $G_version    = "v0.3" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -411,8 +410,11 @@ sub main {
     }
           
     if ( $num_records ) {
-        my $total_cost = 0 ;
-        my $total_duration = 0 ;
+        my $total_cost       = 0 ;
+        my $total_duration   = 0 ;
+        my %account_cost     = () ;
+        my %account_duration = () ;
+
         if ( ! $quiet_flag ) {
             my $pretty_from = pretty_date( $from_date ) ;
             my $pretty_to   = pretty_date( $to_date ) ;
@@ -441,9 +443,18 @@ sub main {
                 if ( defined( ${$cdr_hash}{ 'seconds' } )) {
                     $total_duration += ${$cdr_hash}{ 'seconds' } ;
                 }
+
+                # keep tally of individual accounts
+                if ( defined( ${$cdr_hash}{ 'account' } )) {
+                    my $account = ${$cdr_hash}{ 'account' } ;
+                    $account_cost{ $account }     += ${$cdr_hash}{ 'total' } ;
+                    $account_duration{ $account } += ${$cdr_hash}{ 'seconds' } ;
+                }
             }
         }
         if ( $costs_flag ) {
+            # Total of all calls for all accounts combined
+
             printf "\nTotal cost is \$%.2f\n" , $total_cost ;
             my $pretty_time = convert_seconds( $total_duration ) ;
             print "Total duration of calls is ${pretty_time}" ;
@@ -451,6 +462,22 @@ sub main {
                 print " ($total_duration seconds)" ;
             }
             print "\n" ;
+
+            # now for each account if more than one
+            my @accounts = keys( %account_cost ) ;
+            if ( @accounts > 1 ) {
+                foreach my $account ( @accounts ) {
+                    my $a_cost = $account_cost{ $account } ;
+                    printf "\nTotal cost for account \'$account\' is \$%.2f\n" , $a_cost ;
+                    my $a_duration = $account_duration{ $account } ;
+                    my $pretty_time = convert_seconds( $a_duration ) ;
+                    print "Total duration of calls for account \'$account\' is ${pretty_time}" ;
+                    if ( $a_duration > 60 ) {
+                        print " ($a_duration seconds)" ;
+                    }
+                    print "\n" ;
+                }
+            }
         }
     } else {
         print "No CDR records were found\n" ;

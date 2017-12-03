@@ -7,3 +7,8 @@
         - added RELEASE-NOTES and .gitignore to ignore new misc directory
           of useful development data
         - added some more comments to .voip-ms.conf
+
+0.3     Dec 3, 2017
+        - removed Data::Dumper debugging module
+        - show costs and duration of calls for each account if --cost
+          option given
