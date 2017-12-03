@@ -1,0 +1,9 @@
+0.1     Dec 1, 2017
+        - initial version
+
+0.2     Dec 2, 2017
+        - added -C|--cost option for adding up cost of calls and duration
+          of calls
+        - added RELEASE-NOTES and .gitignore to ignore new misc directory
+          of useful development data
+        - added some more comments to .voip-ms.conf

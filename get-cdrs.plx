@@ -34,7 +34,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.1" ;
+my $G_version    = "v0.2" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -58,6 +58,7 @@ sub main {
 
     my $quiet_flag   = 0 ;
     my $reverse_flag = 0 ;
+    my $costs_flag   = 0 ;
     my $from_date    = "" ;
     my $to_date      = "" ;
     my ( $day, $month, $year ) = (localtime())[3,4,5] ;
@@ -71,7 +72,7 @@ sub main {
         my $arg = $ARGV[ $i ] ;
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
             printf "usage: %s [options]*\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s",
                 $G_progname,
                 "\t[-c|--config]      config-file\n",
                 "\t[-d|--debug]       (debugging output)\n",
@@ -81,6 +82,7 @@ sub main {
                 "\t[-r|--reverse]     (reverse date order of CDR output)\n",
                 "\t[-s|--sheldon]\n",
                 "\t[-t|--to]          YYYY-MM-DD (TO date)\n",
+                "\t[-C|--cost]        (total up costs and duration of CDRs)\n",
                 "\t[-L|--last-month]  (want CDR records for LAST month)\n",
                 "\t[-T|--this-month]  (want CDR records for THIS month)\n",
                 "\t[-V|--version]     (print version of this program)\n" ;
@@ -97,6 +99,8 @@ sub main {
             $config_file = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--reverse" )) {
             $reverse_flag++ ;
+        } elsif (( $arg eq "-C" ) or ( $arg eq "--cost" )) {
+            $costs_flag++ ;
         } elsif (( $arg eq "-s" ) or ( $arg eq "--sheldon" )) {
             print "Bazinga!\n" ;
             return(0) ;
@@ -302,9 +306,8 @@ sub main {
         }
     }
 
-    # leave space for the CDR number count
-    my $full_title      = "    " ;
-    my $full_dash_title = "    " ;
+    my $full_title      = 'call#' ;
+    my $full_dash_title = '-----' ;
 
     # build the title
 
@@ -408,6 +411,8 @@ sub main {
     }
           
     if ( $num_records ) {
+        my $total_cost = 0 ;
+        my $total_duration = 0 ;
         if ( ! $quiet_flag ) {
             my $pretty_from = pretty_date( $from_date ) ;
             my $pretty_to   = pretty_date( $to_date ) ;
@@ -419,7 +424,7 @@ sub main {
         # print the record
         my $count = 1 ;
         foreach my $cdr_hash ( @cdrs ) {
-            my $full_cdr_record = sprintf( "%-3d ", $count ) ;
+            my $full_cdr_record = sprintf( "%-4d ", $count ) ;
             $count++ ;
             foreach my $field ( @fields ) {
                 my $val = ${$cdr_hash}{ $field} ;
@@ -428,12 +433,54 @@ sub main {
                 $full_cdr_record .= sprintf( "%${size}s", $val ) ; 
             }
             print "$full_cdr_record\n" ;
+
+            if ( $costs_flag ) {
+                if ( defined( ${$cdr_hash}{ 'total' } )) {
+                    $total_cost += ${$cdr_hash}{ 'total' } ;
+                }
+                if ( defined( ${$cdr_hash}{ 'seconds' } )) {
+                    $total_duration += ${$cdr_hash}{ 'seconds' } ;
+                }
+            }
+        }
+        if ( $costs_flag ) {
+            printf "\nTotal cost is \$%.2f\n" , $total_cost ;
+            my $pretty_time = convert_seconds( $total_duration ) ;
+            print "Total duration of calls is ${pretty_time}" ;
+            if ( $total_duration > 60 ) {
+                print " ($total_duration seconds)" ;
+            }
+            print "\n" ;
         }
     } else {
         print "No CDR records were found\n" ;
     }
 
     return(0) ;
+}
+
+
+sub convert_seconds {
+    my $seconds = shift ;
+
+    my $str = "" ;
+    $seconds = 0 if ( not defined( $seconds )) ;
+
+    my $hours = int( $seconds / ( 60 * 60 )) ;
+    if ( $hours ) {
+        $seconds -= ( $hours * ( 60 * 60 )) ;
+        $str = "$hours hours, " ;
+    }
+
+    my $mins = int( $seconds / 60 ) ;
+    if ( $mins ) {
+        $seconds -= ( $mins * 60 )  ;
+        $str .= "$mins mins, " ;
+    }
+
+    $str .= "$seconds secs" ;
+
+    return( $str ) ;
 }
 
 
@@ -484,18 +531,13 @@ sub IsLeapYear {
         return( -3 ) ;
     }
 
-    if ( $year % 4 ) {
-        return( 0 ) ;
-    }
+    return(0) if ( $year % 4 ) ;
 
-    if ( $year % 100 ) {
-        return( 1 ) ;
-    }
+    return(1) if ( $year % 100 ) ;
 
-    if ( $year % 400 ) {
-        return( 0 ) ;
-    }
-    return 1;
+    return(0) if ( $year % 400 ) ;
+
+    return(1);
 }
 
 
