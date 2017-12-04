@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.3" ;
+my $G_version    = "v0.4" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -60,6 +60,7 @@ sub main {
     my $costs_flag   = 0 ;
     my $from_date    = "" ;
     my $to_date      = "" ;
+    my $account      = "" ;
     my ( $day, $month, $year ) = (localtime())[3,4,5] ;
     $year += 1900 ;
     $month++ ;
@@ -71,8 +72,9 @@ sub main {
         my $arg = $ARGV[ $i ] ;
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
             printf "usage: %s [options]*\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s %s",
                 $G_progname,
+                "\t[-a|--account]     account-name\n",
                 "\t[-c|--config]      config-file\n",
                 "\t[-d|--debug]       (debugging output)\n",
                 "\t[-f|--from]        YYYY-MM-DD (FROM date)\n",
@@ -98,6 +100,8 @@ sub main {
             $config_file = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--reverse" )) {
             $reverse_flag++ ;
+        } elsif (( $arg eq "-a" ) or ( $arg eq "--account" )) {
+            $account = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-C" ) or ( $arg eq "--cost" )) {
             $costs_flag++ ;
         } elsif (( $arg eq "-s" ) or ( $arg eq "--sheldon" )) {
@@ -359,7 +363,13 @@ sub main {
             dprint( "We want type \'$item\' CDRs" ) ;
         }
     }
-    chop( $cdrs_we_want ) if ( $cdrs_we_want ne "" ) ;
+
+    # if we want a specific account
+    if ( $account ne "" ) {
+        $cdrs_we_want .= "account=${account}&" ;
+    }
+
+    chop( $cdrs_we_want ) if ( $cdrs_we_want ne "" ) ;  # remove trailing '&'
 
     my $url = "https://voip.ms/api/v1/rest.php" .
         "?api_username=${user}&api_password=${pass}&method=${method}" .
@@ -414,11 +424,16 @@ sub main {
         my $total_duration   = 0 ;
         my %account_cost     = () ;
         my %account_duration = () ;
+        my %account_calls    = () ;
 
         if ( ! $quiet_flag ) {
             my $pretty_from = pretty_date( $from_date ) ;
             my $pretty_to   = pretty_date( $to_date ) ;
-            print "$num_records CDR records found from $pretty_from to $pretty_to\n\n" ;
+            print "$num_records CDR records found from $pretty_from to $pretty_to" ;
+            if ( $account ne "" ) {
+                print " for account \'$account\'" ;
+            }
+            print "\n\n" ;
             print "$full_title\n" ;
             print "$full_dash_title\n" ;
 
@@ -447,6 +462,13 @@ sub main {
                 # keep tally of individual accounts
                 if ( defined( ${$cdr_hash}{ 'account' } )) {
                     my $account = ${$cdr_hash}{ 'account' } ;
+                    if ( not defined( $account_cost{ $account } )) {
+                        # initialize the lot of them (even though we don't have to)
+                        $account_cost{ $account }     = 0 ;
+                        $account_duration{ $account } = 0 ;
+                        $account_calls{ $account }    = 0 ;
+                    }
+                    $account_calls{ $account }    += 1 ;
                     $account_cost{ $account }     += ${$cdr_hash}{ 'total' } ;
                     $account_duration{ $account } += ${$cdr_hash}{ 'seconds' } ;
                 }
@@ -467,8 +489,8 @@ sub main {
             my @accounts = keys( %account_cost ) ;
             if ( @accounts > 1 ) {
                 foreach my $account ( @accounts ) {
-                    my $a_cost = $account_cost{ $account } ;
-                    printf "\nTotal cost for account \'$account\' is \$%.2f\n" , $a_cost ;
+                    printf "\nTotal cost of %d calls for account \'%s\' is \$%.2f\n",
+                        $account_calls{ $account }, $account, $account_cost{ $account } ;
                     my $a_duration = $account_duration{ $account } ;
                     my $pretty_time = convert_seconds( $a_duration ) ;
                     print "Total duration of calls for account \'$account\' is ${pretty_time}" ;
