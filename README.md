@@ -12,9 +12,11 @@ you are interested in, the order and size of the fields, and the titles.
 This will print CDR records from November 11 to November 22, in reverse order
 such that records will be numbered from oldest to newest:
 
-    % get-cdrs --last-month --reverse --cost --account home
-
     % get-cdrs.plx --from 2017-11-15 --to 2017-11-22 --reverse
+
+This will print last months CDR records and the cost for account 'home':
+
+    % get-cdrs --last-month --cost --account home
 
 There is a help option:
 
