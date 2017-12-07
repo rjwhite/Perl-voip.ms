@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.4" ;
+my $G_version    = "v0.5" ;
 my $G_debug      = 0 ;
 
 # Constants

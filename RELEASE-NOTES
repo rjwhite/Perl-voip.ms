@@ -17,3 +17,8 @@
         - added -a, --account option to specify a specific account.
         - print number of calls for each account when more than 1 account
         - removed misc directory of response samples
+
+0.5    Dec 7, 2017
+        - updated README.md
+        - added Makefile
+        - added write-phone-CDR-records.sh

@@ -12,6 +12,8 @@ you are interested in, the order and size of the fields, and the titles.
 This will print CDR records from November 11 to November 22, in reverse order
 such that records will be numbered from oldest to newest:
 
+    % get-cdrs --last-month --reverse --cost --account home
+
     % get-cdrs.plx --from 2017-11-15 --to 2017-11-22 --reverse
 
 There is a help option:
@@ -19,6 +21,7 @@ There is a help option:
     % get-cdrs.plx --help
 
     usage: get-cdrs.plx [options]*
+        [-a|--account]     account-name
         [-c|--config]      config-file
         [-d|--debug]       (debugging output)
         [-f|--from]        YYYY-MM-DD (FROM date)
@@ -27,13 +30,14 @@ There is a help option:
         [-r|--reverse]     (reverse date order of CDR output)
         [-s|--sheldon]
         [-t|--to]          YYYY-MM-DD (TO date)
+        [-C|--cost]        (total up costs and duration of CDRs)
         [-L|--last-month]  (want CDR records for LAST month)
         [-T|--this-month]  (want CDR records for THIS month)
         [-V|--version]     (print version of this program)
 
 To print all CDR records for the entire (current) month:
 
-        % get-cdrs.plx -T
+        % get-cdrs.plx --this-month
 
 ## API setup.
 You need to set up your voip.ms service to permit access to it.  This includes
