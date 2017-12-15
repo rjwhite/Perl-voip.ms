@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.5" ;
+my $G_version    = "v0.6" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -64,7 +64,7 @@ sub main {
     my ( $day, $month, $year ) = (localtime())[3,4,5] ;
     $year += 1900 ;
     $month++ ;
-    my @days_in_month = ( 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 12 ) ;
+    my @days_in_month = ( 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ) ;
 
     # get options
 

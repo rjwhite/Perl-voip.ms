@@ -22,3 +22,7 @@
         - updated README.md
         - added Makefile
         - added write-phone-CDR-records.sh
+
+0.6     Dec 15, 2017
+        - fixed bug in number of days in Decemember for use with --this-month
+        - added some comments to sample config file
