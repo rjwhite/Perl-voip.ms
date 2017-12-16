@@ -23,6 +23,7 @@ This will print the filter rules along with filter IDs to make changes to an exi
     % black-list --print
 
 This will set a filter rule giving a Busy signal instead of the default NoService message:
+
     % ./black-list.plx --note 'Bad Evil Dudes' --busy  416-555-1212 
 
 This will change the previous filter rule from Busy to Hangup instead:
