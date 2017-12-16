@@ -9,10 +9,13 @@
 
 # Needs Moxad::Config found on github.com under user rjwhite
 
-# black-list.plx --help
-# black-list.plx  --print   (print the list of filters along with rule IDs)
+# black-list.plx --help     (print usage)
+# black-list.plx            (print the list of filters along with rule IDs)
 # black-list.plx  --busy   --note 'DickHeads Inc'  4165551212 
 # black-list.plx  --hangup --note 'DickHeads Inc'  --filterid 12345  4165551212
+
+# Note that to delete an entry, you need to use the web-interface, or to
+# do advanced routing - like failover_unreachable, etc.
 
 # Copyright 2017 RJ White
 # This program is free software: you can redistribute it and/or modify
@@ -92,17 +95,16 @@ sub main {
                               "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
                               "(default=$routing_default)" ;
             printf "usage: %s [options]* caller-id\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s %s",
                 $G_progname,
                 "\t[-c|--config]        config-file\n",
                 "\t[-d|--debug]         (debugging output)\n",
-                "\t[-h|--help]          (help)\n",
                 "\t[-f|--filterid]      number (existing rule filter ID to change rule)\n",
-                "\t[-n|--note]          string\n",
-                "\t[-p|--print]         (print filters)\n",
-                "\t[-s|--sheldon]\n",
-                "\t[-r|--routing]       $routing_str\n",
+                "\t[-h|--help]          (help)\n",
                 "\t[-l|--line]          phone-number (which line)\n",
+                "\t[-n|--note]          string\n",
+                "\t[-r|--routing]       $routing_str\n",
+                "\t[-s|--sheldon]\n",
                 "\t[-B|--busy]          (routing=sys:busy)\n",
                 "\t[-D|--disconnected]  (routing=sys:disconnected)\n",
                 "\t[-H|--hangup]        (routing=sys:hangup)\n",
@@ -115,9 +117,6 @@ sub main {
             return(0) ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
-        } elsif (( $arg eq "-p" ) or ( $arg eq "--print" )) {
-            $print_flag++ ;
-            $method = "getCallerIDFiltering" ;
         } elsif (( $arg eq "-n" ) or ( $arg eq "--note" )) {
             $values{ 'note' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--routing" )) {
@@ -150,12 +149,15 @@ sub main {
             $caller_id = $ARGV[ $i ] ;
         }
     }
-    if ( $print_flag == 0 ) {
-        if ( $caller_id eq "" ) {
-            print STDERR "$G_progname: need to provide a callerid\n" ;
+    if ( $caller_id eq "" ) {
+        $print_flag++ ;
+        $method = "getCallerIDFiltering" ;
+    } else {
+        $caller_id =~ s/-//g ;
+        if ( $caller_id !~ /^\d+$/ ) {
+            print STDERR "$G_progname: invalid callerid: $caller_id\n" ;
             return(1) ;
         }
-        $caller_id =~ s/-//g ;
         $values{ 'callerid' } = $caller_id ;
     }
 
@@ -325,16 +327,22 @@ sub main {
         }
         dprint( "filtering ID number = $filtering" ) ;
     } else {
-        # find out how many entries we have
+        # find out how many entries we have and max length of 'note'
         my $num_filters = 0 ;
+        my $max_note_len = 0 ;
         foreach my $entry ( @{$filtering} ) {
             $num_filters++ ;
+            my $note = $entry->{ 'note' } ;
+            my $len_note = length( $note ) ;
+            $max_note_len = $len_note if ( $len_note > $max_note_len ) ;
         }
+
+        # print a totel if we have some entries
         if ( $num_filters ) {
             printf "%-12s %-12s %-20s %-10s %s\n",
-                'CallerID', 'DID', 'Routing', 'Filter#', 'Note' ;
+                'CallerID', 'line', 'Routing', 'Filter#', 'Note' ;
             printf "%-12s %-12s %-20s %-10s %s\n",
-                '-' x 10, '-' x 10, '-' x 15, '-' x 7, '-' x 45 ;
+                '-' x 10, '-' x 10, '-' x 15, '-' x 7, '-' x $max_note_len ;
         }
 
         foreach my $entry ( @{$filtering} ) {
@@ -359,7 +367,6 @@ sub main {
 
             printf "%-12s %-12s %-20s %-10d %s\n",
                 $caller_id, $did, $routing, $filter_id, $note ;
-
         }
     }
     

@@ -32,3 +32,11 @@
         - updated Makefile
         - added 'black-list' section in .voip-ms.conf
         - updated README.md
+
+0.6.2   Dec 16, 2017
+        - removed -p|--print option.  Becomes a print
+          (getCallerIDFiltering) if no callerid is given
+        - smarter printing of data - prints title dash-line the size of
+          the maximum 'note' string
+        - put printing of options in useage in alphabetical order
+        - check that callerid is numeric only
