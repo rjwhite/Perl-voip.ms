@@ -26,3 +26,9 @@
 0.6     Dec 15, 2017
         - fixed bug in number of days in Decemember for use with --this-month
         - added some comments to sample config file
+
+0.6.1   Dec 16, 2017
+        - wrote black-list.plx
+        - updated Makefile
+        - added 'black-list' section in .voip-ms.conf
+        - updated README.md

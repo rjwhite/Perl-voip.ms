@@ -8,7 +8,7 @@ file that needs to have the userid and password changed, and the file installed
 into your HOME directory.  You can tweak the config file to set which fields 
 you are interested in, the order and size of the fields, and the titles.
 
-## Example usage
+## Example usages
 This will print CDR records from November 11 to November 22, in reverse order
 such that records will be numbered from oldest to newest:
 
@@ -18,7 +18,16 @@ This will print last months CDR records and the cost for account 'home':
 
     % get-cdrs --last-month --cost --account home
 
-There is a help option:
+This will print the filter rules along with filter IDs to make changes to an existing rule
+    % black-list --print
+
+This will set a filter rule giving a Busy signal instead of the default NoService message
+    % ./black-list.plx --note 'Bad Evil Dudes' --busy  416-555-1212 
+
+This will change the previous filter rule from Busy to Hangup instead
+    % ./black-list.plx --note 'Bad Evil Dudes' --hangup --filterid 12345 416-555-1212
+
+There is a help option with each program.  For eg:
 
     % get-cdrs.plx --help
 
@@ -36,10 +45,6 @@ There is a help option:
         [-L|--last-month]  (want CDR records for LAST month)
         [-T|--this-month]  (want CDR records for THIS month)
         [-V|--version]     (print version of this program)
-
-To print all CDR records for the entire (current) month:
-
-        % get-cdrs.plx --this-month
 
 ## API setup.
 You need to set up your voip.ms service to permit access to it.  This includes
