@@ -18,13 +18,15 @@ This will print last months CDR records and the cost for account 'home':
 
     % get-cdrs --last-month --cost --account home
 
-This will print the filter rules along with filter IDs to make changes to an existing rule
+This will print the filter rules along with filter IDs to make changes to an existing rule:
+
     % black-list --print
 
-This will set a filter rule giving a Busy signal instead of the default NoService message
+This will set a filter rule giving a Busy signal instead of the default NoService message:
     % ./black-list.plx --note 'Bad Evil Dudes' --busy  416-555-1212 
 
-This will change the previous filter rule from Busy to Hangup instead
+This will change the previous filter rule from Busy to Hangup instead:
+
     % ./black-list.plx --note 'Bad Evil Dudes' --hangup --filterid 12345 416-555-1212
 
 There is a help option with each program.  For eg:
