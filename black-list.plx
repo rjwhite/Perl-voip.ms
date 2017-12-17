@@ -9,13 +9,12 @@
 
 # Needs Moxad::Config found on github.com under user rjwhite
 
-# black-list.plx --help     (print usage)
-# black-list.plx            (print the list of filters along with rule IDs)
+# black-list.plx --help      ( print usage )
+# black-list.plx             ( print the list of filters along with rule IDs )
+# black-list.plx -X -f 12345 ( delete rule with filter ID 12345 )
 # black-list.plx  --busy   --note 'DickHeads Inc'  4165551212 
 # black-list.plx  --hangup --note 'DickHeads Inc'  --filterid 12345  4165551212
 
-# Note that to delete an entry, you need to use the web-interface, or to
-# do advanced routing - like failover_unreachable, etc.
 
 # Copyright 2017 RJ White
 # This program is free software: you can redistribute it and/or modify
@@ -72,10 +71,11 @@ sub main {
     ) ;
     my %black_list_keywords = () ;
     my $routing_default = $C_ROUTING_NO_SERVICE ;
-    my $routing = undef ;
-    my $caller_id = "" ;
+    my $routing      = undef ;
+    my $caller_id    = "" ;
     my $filtering_id = "" ;
-    my $print_flag = 0 ;
+    my $print_flag   = 0 ;
+    my $delete_flag  = 0 ;
 
     my %defaults = (
         'note'      => "Added by $G_progname program",
@@ -95,7 +95,7 @@ sub main {
                               "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
                               "(default=$routing_default)" ;
             printf "usage: %s [options]* caller-id\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s %s %s",
                 $G_progname,
                 "\t[-c|--config]        config-file\n",
                 "\t[-d|--debug]         (debugging output)\n",
@@ -109,7 +109,8 @@ sub main {
                 "\t[-D|--disconnected]  (routing=sys:disconnected)\n",
                 "\t[-H|--hangup]        (routing=sys:hangup)\n",
                 "\t[-N|--noservice]     (routing=sys:noservice)\n",
-                "\t[-V|--version]       (print version of this program)\n" ;
+                "\t[-V|--version]       (print version of this program)\n",
+                "\t[-X|--delete]        (delete an entry. Also needs --filterid)\n" ;
 
             return(0) ;
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
@@ -117,6 +118,8 @@ sub main {
             return(0) ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
+        } elsif (( $arg eq "-X" ) or ( $arg eq "--delete" )) {
+            $delete_flag++ ;
         } elsif (( $arg eq "-n" ) or ( $arg eq "--note" )) {
             $values{ 'note' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--routing" )) {
@@ -150,10 +153,23 @@ sub main {
         }
     }
     if ( $caller_id eq "" ) {
-        $print_flag++ ;
-        $method = "getCallerIDFiltering" ;
+        if ( $delete_flag ) {
+            if ( $filtering_id eq "" ) {
+                print STDERR "$G_progname: Need to provide filter ID to delete an entry\n" ;
+                return(1) ;
+            }
+            $method = "delCallerIDFiltering" ;
+        } else {
+            $print_flag++ ;
+            $method = "getCallerIDFiltering" ;
+        }
     } else {
-        $caller_id =~ s/-//g ;
+        if ( $delete_flag ) {
+            print STDERR "$G_progname: huh?!  You gave a --delete option as well!\n" ;
+            return(1) ;
+        }
+        $caller_id =~ s/-//g ;      # remove dashes
+        $caller_id =~ s/ //g ;      # remove any spaces
         if ( $caller_id !~ /^\d+$/ ) {
             print STDERR "$G_progname: invalid callerid: $caller_id\n" ;
             return(1) ;
@@ -213,9 +229,9 @@ sub main {
         }
     }
 
-    # Anything now undefined is a problem
-
-    if ( $print_flag == 0 ) {
+    # If we are setting a filter rule and not printing or deleting
+    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
+        # Anything now undefined is a problem
         foreach my $key ( keys( %values )) {
             if ( not defined( $values{ $key } )) {
                 print STDERR "$G_progname: undefined \'${key}\'\n" ;
@@ -263,7 +279,7 @@ sub main {
     $note = URI::Escape::uri_escape( $note ) ;
 
 
-    if ( $print_flag == 0 ) {
+    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
         dprint( "Routing  = $routing" ) ;
         dprint( "DID      = $did" ) ;
         dprint( "Note     = $note" ) ;
@@ -283,12 +299,14 @@ sub main {
     my $url = "https://voip.ms/api/v1/rest.php" .
         "?api_username=${user}&api_password=${pass}&method=${method}" ;
 
-    if ( $print_flag == 0 ) {
+    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
         $url .= "&note=${note}&routing=${routing}&callerid=${caller_id}&did=${did}" ;
-
         # if it is a replacement rule
         $url .= "&filter=${filtering_id}" if ( $filtering_id ne "" ) ;
     }
+
+    # if we are deleting a rule
+    $url .= "&filtering=${filtering_id}" if ( $delete_flag ) ;
 
     dprint( "URL = \'$url\'" ) ;
 
@@ -319,14 +337,15 @@ sub main {
     }
 
     my $filtering = $json->{ 'filtering' } ;
-    if ( $print_flag == 0 ) {
+    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
         # setting a filter rule
         if ( not defined( $filtering )) {
             print STDERR "$G_progname: Could not get filtering ID from return\n" ;
             return(1) ;
         }
         dprint( "filtering ID number = $filtering" ) ;
-    } else {
+    }
+    if ( $print_flag ) {
         # find out how many entries we have and max length of 'note'
         my $num_filters = 0 ;
         my $max_note_len = 0 ;
@@ -337,7 +356,7 @@ sub main {
             $max_note_len = $len_note if ( $len_note > $max_note_len ) ;
         }
 
-        # print a totel if we have some entries
+        # print a title if we have some entries
         if ( $num_filters ) {
             printf "%-12s %-12s %-20s %-10s %s\n",
                 'CallerID', 'line', 'Routing', 'Filter#', 'Note' ;

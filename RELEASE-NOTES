@@ -2,21 +2,23 @@
         - initial version
 
 0.2     Dec 2, 2017
-        - added -C|--cost option for adding up cost of calls and duration
-          of calls
+        - added -C|--cost option to get-cdrs.plx for adding up cost of
+          calls and duration of calls
         - added RELEASE-NOTES and .gitignore to ignore new misc directory
           of useful development data
         - added some more comments to .voip-ms.conf
 
 0.3     Dec 3, 2017
-        - removed Data::Dumper debugging module
-        - show costs and duration of calls for each account if --cost
-          option given
+        - get-cdrs.plx:
+            - removed Data::Dumper debugging module
+            - show costs and duration of calls for each account if --cost
+              option given
 
 0.4     Dec 4, 2017
-        - added -a, --account option to specify a specific account.
-        - print number of calls for each account when more than 1 account
         - removed misc directory of response samples
+        - get-cdrs.plx:
+            - added -a, --account option to specify a specific account.
+            - print number of calls for each account when more than 1 account
 
 0.5    Dec 7, 2017
         - updated README.md
@@ -24,8 +26,9 @@
         - added write-phone-CDR-records.sh
 
 0.6     Dec 15, 2017
-        - fixed bug in number of days in Decemember for use with --this-month
-        - added some comments to sample config file
+        - fixed bug in get-cdrs.plx in number of days in December for
+          use with --this-month
+        - added some comments to sample config file .voip-ms.conf
 
 0.6.1   Dec 16, 2017
         - wrote black-list.plx
@@ -34,9 +37,18 @@
         - updated README.md
 
 0.6.2   Dec 16, 2017
-        - removed -p|--print option.  Becomes a print
-          (getCallerIDFiltering) if no callerid is given
-        - smarter printing of data - prints title dash-line the size of
-          the maximum 'note' string
-        - put printing of options in useage in alphabetical order
-        - check that callerid is numeric only
+        - black-list.plx:
+            - removed -p|--print option.  Becomes a print
+              (getCallerIDFiltering) if no callerid is given
+            - smarter printing of data - prints title dash-line the size of
+              the maximum 'note' string
+            - put printing of options in usage in alphabetical order
+            - check that callerid is numeric only
+
+0.6.3   Dec 16, 2017
+        - updated comments in .voip-ms.conf
+        - updated many entries in RELEASE-NOTES to make clear which program
+          entries are about.  typos fixed.
+        - black-list.plx:
+            - added -X/--delete option for deleting a rule
+            - allow spaces in phone number
