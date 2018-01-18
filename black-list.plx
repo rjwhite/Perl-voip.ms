@@ -41,7 +41,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.1" ;
+my $G_version    = "v0.2" ;
 my $G_debug      = 0 ;
 
 my $C_ROUTING_NO_SERVICE   = "noservice" ;
@@ -76,6 +76,7 @@ sub main {
     my $filtering_id = "" ;
     my $print_flag   = 0 ;
     my $delete_flag  = 0 ;
+    my $help_flag    = 0 ;
 
     my %defaults = (
         'note'      => "Added by $G_progname program",
@@ -91,28 +92,7 @@ sub main {
     for ( my $i = 0 ; $i <= $#ARGV ; $i++ ) {
         my $arg = $ARGV[ $i ] ;
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
-            my $routing_str = "${C_ROUTING_NO_SERVICE}|${C_ROUTING_BUSY}|" .
-                              "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
-                              "(default=$routing_default)" ;
-            printf "usage: %s [options]* caller-id\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-                $G_progname,
-                "\t[-c|--config]        config-file\n",
-                "\t[-d|--debug]         (debugging output)\n",
-                "\t[-f|--filterid]      number (existing rule filter ID to change rule)\n",
-                "\t[-h|--help]          (help)\n",
-                "\t[-l|--line]          phone-number (which line)\n",
-                "\t[-n|--note]          string\n",
-                "\t[-r|--routing]       $routing_str\n",
-                "\t[-s|--sheldon]\n",
-                "\t[-B|--busy]          (routing=sys:busy)\n",
-                "\t[-D|--disconnected]  (routing=sys:disconnected)\n",
-                "\t[-H|--hangup]        (routing=sys:hangup)\n",
-                "\t[-N|--noservice]     (routing=sys:noservice)\n",
-                "\t[-V|--version]       (print version of this program)\n",
-                "\t[-X|--delete]        (delete an entry. Also needs --filterid)\n" ;
-
-            return(0) ;
+            $help_flag++ ;
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
             print "version: $G_version\n" ;
             return(0) ;
@@ -138,9 +118,6 @@ sub main {
             $config_file = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-f" ) or ( $arg eq "--filterid" )) {
             $filtering_id = $ARGV[ ++$i ] ;
-        } elsif (( $arg eq "-s" ) or ( $arg eq "--sheldon" )) {
-            print "Bazinga!\n" ;
-            return(0) ;
         } elsif ( $arg =~ /^\-/ ) {
             print STDERR "$G_progname: unknown option: $arg\n" ;
             return(1) ;
@@ -191,7 +168,6 @@ sub main {
         return(1) ;
     }
     dprint( "Config data read ok" ) ;
-
 
     # sanity checking required sections
 
@@ -255,6 +231,34 @@ sub main {
     }
     my $note      = $values{ 'note' } ;
     my $did       = $values{ 'did' } ;
+
+    # we defer printing out the help info till after we have set defaults and
+    # read out config file, so we can see defaults in the usage printed
+
+    if ( $help_flag ) {
+        my $routing_str = "${C_ROUTING_NO_SERVICE}|${C_ROUTING_BUSY}|" .
+                            "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
+                            "(default=$routing_default)" ;
+        printf "usage: %s [options]* caller-id\n" .
+            "%s %s %s %s %s %s %s %s %s %s %s %s %s",
+            $G_progname,
+            "\t[-c|--config]        config-file (default=$config_file)\n",
+            "\t[-d|--debug]         (debugging output)\n",
+            "\t[-f|--filterid]      number (existing rule filter ID to change rule)\n",
+            "\t[-h|--help]          (help)\n",
+            "\t[-l|--line]          DID-phone-number (default=$did)\n",
+            "\t[-n|--note]          string\n",
+            "\t[-r|--routing]       $routing_str\n",
+            "\t[-B|--busy]          (routing=sys:busy)\n",
+            "\t[-D|--disconnected]  (routing=sys:disconnected)\n",
+            "\t[-H|--hangup]        (routing=sys:hangup)\n",
+            "\t[-N|--noservice]     (routing=sys:noservice)\n",
+            "\t[-V|--version]       (print version of this program)\n",
+            "\t[-X|--delete]        (delete an entry. Also needs --filterid)\n" ;
+
+        return(0) ;
+    }
+
 
     # good to go.  get authentication info
 

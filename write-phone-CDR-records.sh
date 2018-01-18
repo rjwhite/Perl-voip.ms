@@ -12,20 +12,9 @@
 prog=`basename $0`
 export PATH=$HOME/bin:$PATH
 
-today=`date +%m/%d/%Y`
-month=`echo $today | cut -f1 -d/`
-day=`echo $today | cut -f2 -d/`
-year=`echo $today | cut -f3 -d/`
 accounts=$*
-
-# we want the previous month
-month=`echo $month - 1 | bc`
-if [ x$month = x0 ]; then
-    month=12
-    year=`echo $year - 1 | bc`
-fi
-# convert to non-numeric
-month=`date -d ${month}/${day}/${year} +%b`
+month=`date --date="last month" +%b`
+year=`date --date="last month" +%Y`
 
 dir=$HOME/data/phone-records/$year
 

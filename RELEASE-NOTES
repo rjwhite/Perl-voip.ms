@@ -52,3 +52,18 @@
         - black-list.plx:
             - added -X/--delete option for deleting a rule
             - allow spaces in phone number
+
+0.6.4   Jan 18, 2018
+        - black-list.plx:
+            - removed --sheldon option
+            - refactored so handling of printing usage is done later after
+              setting defaults and reading config so we can see defaults in 
+              the usage message
+        - get-did-info.plx:
+            - created.
+        - write-phone-CDR-records.sh:
+            - simplified - suggestion thanx to Ian! Allen
+        - README.md
+            - added example for get-did-info
+        - Makefile:
+            - added entry for get-did-info.plx

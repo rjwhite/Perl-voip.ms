@@ -12,4 +12,5 @@ directories:
 ${DEST_DIR}/voip:
 	install -p -m ${MODE} get-cdrs.plx ${DEST_DIR}/get-cdrs
 	install -p -m ${MODE} black-list.plx ${DEST_DIR}/black-list
+	install -p -m ${MODE} get-did-info.plx ${DEST_DIR}/get-did-info
 	install -p -m ${MODE} write-phone-CDR-records.sh ${DEST_DIR}/write-phone-CDR-records
