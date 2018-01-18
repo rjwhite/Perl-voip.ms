@@ -30,7 +30,7 @@ This will change the previous filter rule from Busy to Hangup instead:
 
     % black-list --note 'Bad Evil Dudes' --hangup --filterid 12345 416-555-1212
 
-This will print all data about each DID's, with tyhe phone-number preceded by the (sub)account-name
+This will print all data about each DID, with the phone-number preceded by the (sub)account-name
 
     % get-did-info --account --all
 
