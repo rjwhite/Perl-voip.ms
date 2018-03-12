@@ -1,0 +1,14 @@
+package to allow use of WWW::Curl CPAN Perl module on Linux:
+    apt-get install libcurl4-gnutls-dev
+
+CPAN modules:
+    cpan WWW::Curl
+    cpan JSON
+    cpan POSIX
+
+Moxad::Config git module from github.com/rjwhite/Perl-config-module
+
+Add your IP address to list of allowed addresses for the API:
+    http://www.voip.ms
+        Main Menu -> SOAP and REST/JSON API -> Enable IP Addresses
+        https://www.voip.ms/m/api.php

@@ -8,15 +8,15 @@
 # on a Linix Mint system with: 'apt-get install libcurl4-gnutls-dev'
 
 # Needs Moxad::Config found on github.com under user rjwhite
+#   https://github.com/rjwhite/Python-config-module
 
-# black-list.plx --help      ( print usage )
-# black-list.plx             ( print the list of filters along with rule IDs )
-# black-list.plx -X -f 12345 ( delete rule with filter ID 12345 )
-# black-list.plx  --busy   --note 'DickHeads Inc'  4165551212 
-# black-list.plx  --hangup --note 'DickHeads Inc'  --filterid 12345  4165551212
+# black-list --help      ( print usage )
+# black-list             ( print the list of filters along with rule IDs )
+# black-list --busy   --note 'DickHeads Inc'  4165551212 ( add an entry )
+# black-list --hangup --note 'DickHeads Inc'  --filterid 12345  4165551212
+# black-list -X -f 12345 ( delete rule with filter ID 12345 )
 
-
-# Copyright 2017 RJ White
+# Copyright 2018 RJ White
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -41,7 +41,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.2" ;
+my $G_version    = "v0.3" ;
 my $G_debug      = 0 ;
 
 my $C_ROUTING_NO_SERVICE   = "noservice" ;
@@ -69,23 +69,25 @@ sub main {
         $C_ROUTING_HANG_UP      => 1,
         $C_ROUTING_DISCONNECTED => 1,
     ) ;
-    my %black_list_keywords = () ;
     my $routing_default = $C_ROUTING_NO_SERVICE ;
     my $routing      = undef ;
+    my $error        = "" ;
     my $caller_id    = "" ;
     my $filtering_id = "" ;
+
     my $print_flag   = 0 ;
     my $delete_flag  = 0 ;
+    my $set_flag     = 0 ;
     my $help_flag    = 0 ;
 
     my %defaults = (
         'note'      => "Added by $G_progname program",
         'routing'   => $routing_default,
-        'callerid'  => undef,
-        'did'       => undef,
+        'did'       => "unknown",
+        'callerid'  => "unknown",
     ) ;
-    my %values = () ;
-    my $error ;
+    my %new_values = () ;
+    my %options    = () ;
 
     # get options
 
@@ -101,19 +103,19 @@ sub main {
         } elsif (( $arg eq "-X" ) or ( $arg eq "--delete" )) {
             $delete_flag++ ;
         } elsif (( $arg eq "-n" ) or ( $arg eq "--note" )) {
-            $values{ 'note' } = $ARGV[ ++$i ] ;
+            $options{ 'note' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--routing" )) {
-            $values{ 'routing' } = $ARGV[ ++$i ] ;
+            $options{ 'routing' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-B" ) or ( $arg eq "--busy" )) {
-            $values{ 'routing' } = 'busy' ;
+            $options{ 'routing' } = 'busy' ;
         } elsif (( $arg eq "-N" ) or ( $arg eq "--noservice" )) {
-            $values{ 'routing' } = 'noservice' ;
+            $options{ 'routing' } = 'noservice' ;
         } elsif (( $arg eq "-H" ) or ( $arg eq "--hangup" )) {
-            $values{ 'routing' } = 'hangup' ;
+            $options{ 'routing' } = 'hangup' ;
         } elsif (( $arg eq "-l" ) or ( $arg eq "--line" )) {
-            $values{ 'did' } = $ARGV[ ++$i ] ;
+            $options{ 'did' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-D" ) or ( $arg eq "--disconnected" )) {
-            $values{ 'routing' } = 'disconnected' ;
+            $options{ 'routing' } = 'disconnected' ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
             $config_file = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-f" ) or ( $arg eq "--filterid" )) {
@@ -129,7 +131,15 @@ sub main {
             $caller_id = $ARGV[ $i ] ;
         }
     }
+
+    if (( defined( $options{ 'routing' } )) or ( defined( $options{ 'did' } )) or
+        ( defined( $options{ 'note' } ))) {
+            dprint( "SET flag set (changing/setting values)" ) ;
+            $set_flag++ ;
+    }
+
     if ( $caller_id eq "" ) {
+        dprint( "No Caller ID given" ) ;
         if ( $delete_flag ) {
             if ( $filtering_id eq "" ) {
                 print STDERR "$G_progname: Need to provide filter ID to delete an entry\n" ;
@@ -137,21 +147,31 @@ sub main {
             }
             $method = "delCallerIDFiltering" ;
         } else {
-            $print_flag++ ;
-            $method = "getCallerIDFiltering" ;
+            if ( $set_flag ) {
+                    # should be making modifications to an exsiting rule
+                    if ( $filtering_id eq "" ) {
+                        print STDERR "$G_progname: Need to provide filter ID to modify an entry\n" ;
+                        return(1) ;
+                    }
+                    $method = "setCallerIDFiltering" ;
+            } else {
+                $print_flag++ ;
+                $method = "getCallerIDFiltering" ;
+            }
         }
     } else {
+        dprint( "Caller ID given: $caller_id" ) ;
         if ( $delete_flag ) {
             print STDERR "$G_progname: huh?!  You gave a --delete option as well!\n" ;
             return(1) ;
         }
+        $method = "setCallerIDFiltering" ;
         $caller_id =~ s/-//g ;      # remove dashes
         $caller_id =~ s/ //g ;      # remove any spaces
         if ( $caller_id !~ /^\d+$/ ) {
             print STDERR "$G_progname: invalid callerid: $caller_id\n" ;
             return(1) ;
         }
-        $values{ 'callerid' } = $caller_id ;
     }
 
     # read in config data
@@ -195,50 +215,13 @@ sub main {
         $defaults{ $keyword } = $value ;
     }
 
-    # now make sure we have the values we need.
-    # options over-ride anything from the config file or defaults
-
-    foreach my $key ( keys( %defaults )) {
-        my $val = $defaults{ $key } ;
-        if ( not defined( $values{ $key } )) {
-            $values{ $key } = $val ;
-        }
-    }
-
-    # If we are setting a filter rule and not printing or deleting
-    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
-        # Anything now undefined is a problem
-        foreach my $key ( keys( %values )) {
-            if ( not defined( $values{ $key } )) {
-                print STDERR "$G_progname: undefined \'${key}\'\n" ;
-                $num_errors++ ;
-            }
-        }
-        return(1) if ( $num_errors ) ;
-
-        # verify routing is OK
-
-        $routing = $values{ 'routing' } ;
-        $routing =~ tr/A-Z/a-z/ ;       # make lower case
-        $routing =~ s/^sys:// ;         # in case the user already gave the prefix
-        if ( not defined( $routing_types{ $routing } )) {
-            print STDERR "$G_progname: Invalid routing type: \'$routing\'\n" ;
-            return(1) ;
-        }
-        # prefix routing type
-        $routing = "sys:${routing}" ;
-
-    }
-    my $note      = $values{ 'note' } ;
-    my $did       = $values{ 'did' } ;
-
     # we defer printing out the help info till after we have set defaults and
     # read out config file, so we can see defaults in the usage printed
 
     if ( $help_flag ) {
         my $routing_str = "${C_ROUTING_NO_SERVICE}|${C_ROUTING_BUSY}|" .
-                            "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
-                            "(default=$routing_default)" ;
+                          "${C_ROUTING_HANG_UP}|${C_ROUTING_DISCONNECTED} " .
+                          "(default=$routing_default)" ;
         printf "usage: %s [options]* caller-id\n" .
             "%s %s %s %s %s %s %s %s %s %s %s %s %s",
             $G_progname,
@@ -246,7 +229,7 @@ sub main {
             "\t[-d|--debug]         (debugging output)\n",
             "\t[-f|--filterid]      number (existing rule filter ID to change rule)\n",
             "\t[-h|--help]          (help)\n",
-            "\t[-l|--line]          DID-phone-number (default=$did)\n",
+            "\t[-l|--line]          DID-phone-number (default=$defaults{ 'did' })\n",
             "\t[-n|--note]          string\n",
             "\t[-r|--routing]       $routing_str\n",
             "\t[-B|--busy]          (routing=sys:busy)\n",
@@ -279,78 +262,156 @@ sub main {
     my $user   = $auth_values{ 'user' } ;
     my $pass   = $auth_values{ 'pass' } ;
 
-    # escape needed strings
-    $note = URI::Escape::uri_escape( $note ) ;
-
-
-    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
-        dprint( "Routing  = $routing" ) ;
-        dprint( "DID      = $did" ) ;
-        dprint( "Note     = $note" ) ;
-        dprint( "callerID = $caller_id" ) ;
-    }
     dprint( "user     = $user" ) ;
     dprint( "method   = $method" ) ;
 
-    my $curl = WWW::Curl::Easy->new();
-    if ( ! $curl ) {
-        print STDERR "WWW::Curl::Easy->new() failed\n" ;
-        return(1) ;
-    }
+    # finally...  build the base URL we need
 
-    # finally...  build the URL we need
+    my $base_url = "https://voip.ms/api/v1/rest.php" .
+        "?api_username=${user}&api_password=${pass}" ;
 
-    my $url = "https://voip.ms/api/v1/rest.php" .
-        "?api_username=${user}&api_password=${pass}&method=${method}" ;
-
-    if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
-        $url .= "&note=${note}&routing=${routing}&callerid=${caller_id}&did=${did}" ;
-        # if it is a replacement rule
-        $url .= "&filter=${filtering_id}" if ( $filtering_id ne "" ) ;
-    }
-
-    # if we are deleting a rule
-    $url .= "&filtering=${filtering_id}" if ( $delete_flag ) ;
-
-    dprint( "URL = \'$url\'" ) ;
-
-    $curl->setopt( CURLOPT_HEADER, 0 );
-    $curl->setopt( CURLOPT_URL, $url ) ;
-
-    my $response_body;
-    $curl->setopt( CURLOPT_WRITEDATA, \$response_body) ;
-
-    my $retcode = $curl->perform() ;
-    if ( $retcode ) {
-        print STDERR "$G_progname: " . $curl->strerror($retcode), " ($retcode)\n" ;
-        print STDERR "$G_progname: errbuf: ", $curl->errbuf . "\n" ;
-        return(1) ;
-    }
-
-    my $json = decode_json( $response_body ) ;
-
-    my $status = $json->{ 'status' } ;
-    dprint( "status = $status" ) ;
-    if ( $status ne "success" ) {
-        my $reason = $status ;
-        if ( $status eq "used_filter" ) {
-            $reason = "Filter for this number ($caller_id) already used" ;
+    my $url ;
+    # if we want to print entries
+    if ( $print_flag ) {
+        $url = $base_url . "&method=${method}" ;
+        if ( $filtering_id ne "" ) {
+            # want to print a specific rule
+            $url .= "&filtering=${filtering_id}" ;
         }
-        print STDERR "$G_progname: Failed status: $reason\n" ;
+    } elsif ( $delete_flag ) {
+        $url = $base_url . "&method=${method}&filtering=${filtering_id}" ;
+    } elsif ( $set_flag ) {
+        if ( $caller_id ne "" ) {
+            # we are creating a new rule
+            # make sure we have all the values we need
+
+            foreach my $field ( keys( %defaults )) {
+                # first grab the defaults - which were over-ridden by the config file
+                if ( not defined( $new_values{ $field } )) {
+                    my $default = $defaults{ $field } ;
+                    dprint( "Setting default for $field of \'$default\'" ) ;
+                    $new_values{ $field } = $default ;
+                }
+
+                # options given over-ride these defaults
+                if ( defined( $options{ $field } )) {
+                    my $value = $options{ $field } ;
+                    dprint( "Overriding default with opition for $field with $value" ) ;
+                    $new_values{ $field } = $value ;
+                }
+            }
+            $new_values{ 'callerid' } = $caller_id ;
+        } else {
+            # we need to grab existing values for other stuff and preserve them
+
+            my $old_values_ref ;
+            my @errors = () ;
+            $url =  $base_url . "&method=getCallerIDFiltering&filtering=$filtering_id" ;
+            my $ret = send_request( $url, \@errors, \$old_values_ref ) ;
+            if ( $ret ) {
+                if ( @errors == 0 ) {
+                    print STDERR "${G_progname}: Arg 2 to send_request() must be bad\n" ;
+                    return(1) ;
+                }
+                foreach my $error ( @errors ) {
+                    print STDERR "${G_progname}: $error\n" ;
+                }
+                return(1) ;
+            }
+
+            # there should only be 1 entry.  check for that.
+            my $filtering = ${$old_values_ref}->{ 'filtering' } ;
+            my $num_entries = @{$filtering} ;
+            if ( $num_entries != 1 ) {
+                print STDERR "${G_progname}: Got $num_entries instead of expected 1\n" ;
+                return(1) ;
+            }
+            my $entry_ref = ${$filtering}[0] ;
+
+            # now over-ride any new values we gave as options
+            foreach my $field ( keys( %{$entry_ref} )) {
+                my $value = ${$entry_ref}{ $field } ;
+                dprint( "Got old value of \'$value\' for $field" ) ;
+
+                if ( defined( $defaults{ $field } )) {
+                    dprint( "Replacing default value for \'$field\' with old value of \'$value\'" ) ;
+                    $defaults{ $field } = $value ;
+
+                    if ( defined( $options{ $field } )) {
+                        $value = $options{ $field } ;
+                        dprint( "Now Replacing default value for \'$field\' with \'$value\'from options" ) ;
+                        $defaults{ $field } = $value ;
+                    }
+                }
+            }
+            # now copy over our over-ridden defaults to new_values
+            %new_values = %defaults ;
+        }
+
+        # now a bunch of common code for changing a rule or creating a new one
+        # At this point, we have the values we want in the hash %new_values
+
+        # verify routing is OK
+
+        my $routing = $new_values{ 'routing' } ;
+        $routing =~ tr/A-Z/a-z/ ;       # make lower case
+        $routing =~ s/^sys:// ;         # in case the user already gave the prefix
+        if ( not defined( $routing_types{ $routing } )) {
+            print STDERR "$G_progname: Invalid routing type: \'$routing\'\n" ;
+            return(1) ;
+        }
+        # prefix routing type
+        $routing = "sys:${routing}" ;
+
+        # escape needed strings
+        my $note = $new_values{ 'note' } ;
+        $note    = URI::Escape::uri_escape( $note ) ;
+
+        my $did       = $new_values{ 'did' } ;
+        my $caller_id = $new_values{ 'callerid' } ;
+
+        $url =  $base_url . "&method=${method}" .
+                "&note=${note}&routing=${routing}&callerid=${caller_id}&did=${did}" ;
+
+        # note that it's 'filter' and not 'filtering'.  sheesh...
+        $url .= "&filter=${filtering_id}" if ( $filtering_id ne "" ) ;
+    } else {
+        # can't happen...
+        print STDERR "${G_progname}: Unclear what operation is being attempted\n" ;
         return(1) ;
     }
 
-    my $filtering = $json->{ 'filtering' } ;
+    # finally ready to send the request
+
+    my @errors = () ;
+    my $json_ref ;
+    my $ret = send_request( $url, \@errors, \$json_ref ) ;
+    if ( $ret ) {
+        if ( @errors == 0 ) {
+            print STDERR "${G_progname}: Arg 2 to send_request() must be bad\n" ;
+            return(1) ;
+        }
+        foreach my $error ( @errors ) {
+            print STDERR "${G_progname}: $error\n" ;
+        }
+        return(1) ;
+    }
+
+    return(0) if ( $set_flag ) ;        # we're done
+    return(0) if ( $delete_flag ) ;     # ditto.
+
+    my $filtering = ${$json_ref}->{ 'filtering' } ;
     if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
         # setting a filter rule
         if ( not defined( $filtering )) {
-            print STDERR "$G_progname: Could not get filtering ID from return\n" ;
+            print STDERR "$G_progname: Could not get filtering ID from returned JSON data\n" ;
             return(1) ;
         }
         dprint( "filtering ID number = $filtering" ) ;
     }
+
     if ( $print_flag ) {
-        # find out how many entries we have and max length of 'note'
+        # find out how many entries we have and the max length of 'note'
         my $num_filters = 0 ;
         my $max_note_len = 0 ;
         foreach my $entry ( @{$filtering} ) {
@@ -370,8 +431,8 @@ sub main {
 
         foreach my $entry ( @{$filtering} ) {
             my %things = (
-                'did'   => 'unknown',
-                'note'  => '',
+                'did'       => 'unknown',
+                'note'      => '',
                 'routing'   => 'unknown',
                 'filtering' => 'unknown',
                 'callerid'  => 'unknown',
@@ -392,13 +453,90 @@ sub main {
                 $caller_id, $did, $routing, $filter_id, $note ;
         }
     }
-    
+
+    return(0) ;
+}
+
+
+# send a URL request
+#
+# Arguments:
+#   1:  URL
+#   2:  reference to array of errors to return
+#   3:  reference of JSON data to return
+# Returns:
+#   0:  ok
+#   1:  error
+# Globals:
+#   none
+
+sub send_request {
+    my $url       = shift ;
+    my $error_ref = shift ;
+    my $json_ref  = shift ;
+
+    my $i_am = "send_request()" ;
+
+    # sanity checking of arguments
+    if (( ref( $error_ref ) eq "" ) or ( ref( $error_ref ) ne "ARRAY" )) {
+        return(1) ;
+    }
+    if (( not defined( $url )) or ( $url eq "" )) {
+        push( @{$error_ref},  "${i_am}: (Arg 1) URL is undefined or empty string" ) ;
+        return(1) ;
+    }
+    if (( ref( $json_ref ) eq "" ) or ( ref( $json_ref ) ne "SCALAR" )) {
+        push( @{$error_ref},  "${i_am}: Arg 3 is not a SCALAR reference to return data" ) ;
+        return(1) ;
+    }
+
+    dprint( "${i_am}: URL = \'$url\'" ) ;
+
+    my $curl = WWW::Curl::Easy->new();
+    if ( ! $curl ) {
+        push( @{$error_ref}, "${i_am}: WWW::Curl::Easy->new() failed" ) ;
+        return(1) ;
+    }
+
+    $curl->setopt( CURLOPT_HEADER, 0 );
+    $curl->setopt( CURLOPT_URL, $url ) ;
+
+    my $response_body;
+    $curl->setopt( CURLOPT_WRITEDATA, \$response_body) ;
+
+    my $retcode = $curl->perform() ;
+    if ( $retcode ) {
+        push( @{$error_ref},  "${i_am}: " . $curl->strerror($retcode) . " ($retcode)" ) ;
+        push( @{$error_ref}, "${i_am}: errbuf: " . $curl->errbuf . "\n" ) ;
+        return(1) ;
+    }
+
+    my $json = decode_json( $response_body ) ;
+
+    my $status = $json->{ 'status' } ;
+    dprint( "status = $status" ) ;
+    if ( $status ne "success" ) {
+        my $reason = $status ;
+        if ( $status eq "used_filter" ) {
+            $reason = "Filter number already in use" ;
+        }
+        push( @{$error_ref},  "${i_am}: Failed status: $reason" ) ;
+        return(1) ;
+    }
+    ${$json_ref} = \$json ;
     return(0) ;
 }
 
 
 
 # debug print
+#
+# Arguments:
+#   1:  message
+# Returns:
+#   0
+# Globals:
+#   $G_debug
 
 sub dprint {
     my $msg = shift ;

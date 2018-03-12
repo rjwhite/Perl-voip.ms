@@ -1,0 +1,108 @@
+.TH get-did-info 1
+.SH NAME
+get-did-info \- get info for phone lines using voip.ms API
+.SH SYNOPSIS
+.B get-did-info
+[
+.B \-adhAV
+]
+[
+.B \-c config
+]
+[
+.B \-D DID (phone-line)
+]
+.SH OPTIONS
+.TP
+\fB\-a|--all
+print all information about the phone line(s)
+.TP
+\fB\-c|--config\fR config-file
+use the given config file instead of the default ~/.voip-ms.conf
+.TP
+\fB\-d|--debug\fR
+print debugging messages
+.TP
+\fB\-h|--help\fR
+print usage and exit.
+.TP
+\fB\-A|--account\fR
+print the (sub)account name as well as the phone-number in the heading
+.TP
+\fB\-D|--did \fR phone-number
+specify a specific phone line instead of all the phone-lines
+.TP
+\fB\-V|--version\fR
+print version of the program and exit
+.SH EXAMPLES
+.TP
+get-did-info
+prints the phone numbers known about for the voip.ms account
+.TP
+get-did-info --account
+prints the account number and phone numbers known about for the voip.ms account
+.TP
+get-did-info --account --all
+prints all the info about all the phone lines
+.TP
+get-did-info --account --all --did 519-555-1212
+prints all the info about phone number 519-555-1212.  Dashes are optional
+.SH DESCRIPTION
+.I get-did-info
+gets the information about all the phone numbers known in the voip.ms account.
+.PP
+With no options, \fIget-did-info\fP prints the phone-numbers known to the
+voip.ms account, one per line.  If the --account is used, it precedes
+the phone-number with the account or sub-account name, separated by
+a semi-colon.  eg: 12345_saublebeach:5195551212.  If the --all option
+is used, then all information known about the phone line is printed, indented, as keyword and value pairs.
+.PP
+It can be used to get the account name of a specific phone number, to be used
+to get CDR records just for that account using the \fBget-cdrs\fP command.
+.br
+For eg:
+.PP
+.RS 5n
+% \fBget-did-info  --account\fP
+.nf
+    12345:5195551212
+    12345_owensound:5195552345
+    12345_saublebeach:5195553456
+
+% \fBget-cdrs --account 12345_saublebeach\fP
+    ...
+    ...
+.fi
+.RE
+.PP
+The config file .voip-ms.conf, found in the users HOME directory, requires an 'authentication' section
+providing a 'user' and 'pass' entries for connection to the voip.ms API.
+.PP
+To use this program, you will have to set up access for the IP number you are running this program
+from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH CONFIG FILE
+The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
+is used for several programs that use the voip.ms API.
+The config file is shared, mainly so there is a single centralized location for authentication data for access 
+to the API.
+.PP
+The required section in the config file for the \fIget-did-info\fP program is:
+.PP
+.RS 5n
+.TP
+.B authentication:
+    user   = me@foo.bar
+.br
+    pass   = GabbaGabba
+.RE
+.PP
+.SH SEE ALSO
+black-list(1)
+.br
+get-cdrs(1)
+.SH AUTHOR
+RJ White
+.br
+rj@moxad.com
+.br
+Moxad Enterprises Inc.

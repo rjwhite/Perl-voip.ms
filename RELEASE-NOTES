@@ -67,3 +67,34 @@
             - added example for get-did-info
         - Makefile:
             - added entry for get-did-info.plx
+
+0.7     Mar 12, 2018
+        - get-cdrs.plx:
+            - fixed bug in Leap year date handling.
+            - switch on debugging for Config module as well if --debug used
+            - no longer requires the 'field-size' section in the config file
+            - without 'field-size'    section in config-file, figures out best
+              width to have each field based on max size of data
+            - truncates data if too long for field, if size given in config file.
+            - dash-title now extends for entire field size
+            - titles centered
+            - refactoring
+        - README.md:
+            - fixed errors
+            - added new -p option to help in get-cdrs example
+        - doc/man/man1:
+            - created black-list.1
+            - created get-cdrs.1
+            - created get-did-info.1
+        - Makefile
+            - created 'man' target
+            - updated 'install' target
+            - now distiguishes between a root install and an ordinary user.
+              checks if root or not.
+        - black-list.plx:
+            - can now specify a single specfic entry to print with -f option
+            - now preserves old exiting values if a change is being made to only
+              1 or 2 items (routing, note, did, etc)
+            - total overhaul.  refactoring
+        - .voip-ms.conf
+            - commented out the 'field-size' section and added comments

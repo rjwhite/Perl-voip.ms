@@ -1,0 +1,138 @@
+.TH black-list 1
+.SH NAME
+black-list \- manage the black listed phone numbers for voip.ms phone lines
+.SH SYNOPSIS
+.B black-list
+[
+.B \-dhBDHNVX
+]
+[
+.B \-c config
+]
+[
+.B \-f filter-ID
+]
+[
+.B \-l line
+]
+[
+.B \-n note
+]
+[
+.B \-r routing-type
+]
+
+.SH OPTIONS
+.TP
+\fB\-c|--config\fR config-file
+use the given config file instead of the default ~/.voip-ms.conf
+.TP
+\fB\-d|--debug\fR
+print debugging messages
+.TP
+\fB\-f|--filterid\fR filter-ID
+use the filter ID to specify a rule to delete (with -X) or to change
+.TP
+\fB\-h|--help\fR
+print usage and exit.
+.TP
+\fB\-l|--line\fR phone-number
+phone line to manage black-list for, other than the default from the config file.
+.TP
+\fB\-n|--note\fR description string
+use the string given as a description for who/what is being black-listed.
+.TP
+\fB\-r|--routing\fR routing-type
+type of routing response.
+.TP
+\fB\-B|--busy\fR
+Busy routing response.   short for --rounting sys:busy
+.TP
+\fB\-D|--disconnected\fR
+Disconnect routing response.   short for --rounting sys:disconnected
+.TP
+\fB\-H|--hangup\fR
+Hangup routing response.   short for --rounting sys:hangup
+.TP
+\fB\-N|--noservice\fR
+Noservice routing response.   short for --rounting sys:noservice
+.TP
+\fB\-V|--version\fR
+print version of the program and exit
+.TP
+\fB\-X|--delete\fR
+delete a black-list rule.  Needs the --filterid option
+.SH EXAMPLES
+.TP
+black-list
+print all black list rules
+.TP
+black-list --hangup --note 'Acme Computers' 519-555-1234
+create a black-list for Acme Computers to hangup when they call
+.TP
+black-list --filterid 618705 --disconnected
+change the routing for rule 618705 to disconnect instead
+.TP
+black-list --filterid 618705  --routing sys:noservice
+change the routing for rule 618705 to noservice instead
+.TP
+black-list --delete --filterid 618705A
+remove rule 618705A
+.SH DESCRIPTION
+.I black-list
+manages the black-list for a phone number.  The default phone number is found in the
+config file .voip-ms.conf in the users HOME directory.  The phone line the rules are
+for can be changed with the --line option.
+.PP
+There are defaults in the program.  They will be over-ridden by any valid keywords found in
+the 'black-list' section in the config file.  And those will be over-ridden by any options given.
+.PP
+The accepted routing types to be used with the --routing option are 'hangup', 'disconnected', 'noservice' and busy'.  You can leave off the preceding 'sys:' that you see printed by the program.  It is easier to use the short-cut options though.
+.PP
+To use this program, you will have to set up access for the IP number you are running this program
+from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH CONFIG FILE
+The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
+is used for several programs that use the voip.ms API.
+The config file is shared, mainly so there is a single centralized location for authentication data for access 
+to the API.
+.PP
+The required sections in the config file for the \fIblack-list\fP program are:
+.PP
+.RS 5n
+.TP
+.B authentication:
+    user       = me@foo.bar
+.br
+    pass       = GabbaGabba
+.TP
+.B black-list:
+.nf
+    did        = 5195551212
+
+    routing    = noservice
+
+    note       = 'Added by black-list program'
+
+.fi
+.RE
+.PP
+The 'did' keyword is optional, but if you don't set it in the config file, you'll
+need to provide the --line option, and if you don't provide any other
+options, it assumes you want to change the DID number in an existing
+rule or add a new rule, and will complain.  So instead of printing all black list
+rules with no options, it will complain instead.  So, just set a default in the config file.
+.PP
+The 'routing' keyword is optional.  The default in the program is 'sys:noservice'.
+.PP
+The 'note' keyword is optional.  The default in the program is 'Added by black-list program'.
+.SH SEE ALSO
+get-cdrs(1)
+.br
+get-did-info(1)
+.SH AUTHOR
+RJ White
+.br
+rj@moxad.com
+.br
+Moxad Enterprises Inc.

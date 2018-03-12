@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.6" ;
+my $G_version    = "v0.7" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -60,6 +60,7 @@ sub main {
     my $costs_flag   = 0 ;
     my $from_date    = "" ;
     my $to_date      = "" ;
+	my $padding		 = 3 ;
     my $account      = "" ;
     my ( $day, $month, $year ) = (localtime())[3,4,5] ;
     $year += 1900 ;
@@ -72,13 +73,14 @@ sub main {
         my $arg = $ARGV[ $i ] ;
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
             printf "usage: %s [options]*\n" .
-                "%s %s %s %s %s %s %s %s %s %s %s %s %s",
+                "%s %s %s %s %s %s %s %s %s %s %s %s %s %s",
                 $G_progname,
                 "\t[-a|--account]     account-name\n",
                 "\t[-c|--config]      config-file\n",
                 "\t[-d|--debug]       (debugging output)\n",
                 "\t[-f|--from]        YYYY-MM-DD (FROM date)\n",
                 "\t[-h|--help]        (help)\n",
+                "\t[-p|--padding]     number (padding between output fields (default=$padding)\n",
                 "\t[-q|--quiet]       (quiet.  No headings and titles)\n",
                 "\t[-r|--reverse]     (reverse date order of CDR output)\n",
                 "\t[-s|--sheldon]\n",
@@ -98,6 +100,8 @@ sub main {
             $quiet_flag++ ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
             $config_file = $ARGV[ ++$i ] ;
+        } elsif (( $arg eq "-p" ) or ( $arg eq "--padding" )) {
+            $padding = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--reverse" )) {
             $reverse_flag++ ;
         } elsif (( $arg eq "-a" ) or ( $arg eq "--account" )) {
@@ -115,7 +119,7 @@ sub main {
                 print STDERR "$G_progname: $error\n" ;
                 return(1) ;
             } 
-            $num_days++ if ( $ret ) ;
+            $num_days++ if ( $ret and $month eq "02" ) ;    # February
             $num_days = sprintf( "%02s", $num_days ) ;
             $from_date = "${year}-${month}-01" ;
             $to_date   = "${year}-${month}-${num_days}" ;
@@ -132,7 +136,7 @@ sub main {
                 print STDERR "$G_progname: $error\n" ;
                 return(1) ;
             } 
-            $num_days++ if ( $ret ) ;
+            $num_days++ if ( $ret and $month eq "02" ) ;    # February
             $num_days = sprintf( "%02s", $num_days ) ;
             $from_date = "${year}-${month}-01" ;
             $to_date   = "${year}-${month}-${num_days}" ;
@@ -193,7 +197,7 @@ sub main {
 
     # read in config data
 
-    Moxad::Config->set_debug( 0 ) ;
+    Moxad::Config->set_debug( $G_debug ) ;
     my $cfg1 = Moxad::Config->new(
         $config_file, "",
         { 'AcceptUndefinedKeywords' => 'no' } ) ;
@@ -226,7 +230,7 @@ sub main {
 
     # sanity checking required keywords in 'cdr' section
 
-    my @cdr_keywords_needed = ( 'order', 'field-size', 'title', 'cdrs-wanted' ) ;
+    my @cdr_keywords_needed = ( 'order', 'title', 'cdrs-wanted' ) ;
     my %got_keywords = () ;
     my @keywords = $cfg1->get_keywords( 'cdrs' ) ;
     foreach my $keyword ( @keywords ) {
@@ -270,7 +274,6 @@ sub main {
         $cfg1->clear_errors() ;
     }
 
-
     # get the fields we want, and the order to print them
 
     my @fields = $cfg1->get_values( 'cdrs', 'order' ) ;
@@ -290,47 +293,49 @@ sub main {
         $cfg1->clear_errors()  ;
     }
 
-    # get the field sizes
+    # fill in any missing titles using the field names
+	# Capitalize the first letter
 
-    my %field_sizes = $cfg1->get_values( 'cdrs', 'field-size' ) ;
-    if ( $cfg1->errors() ) {
-        %field_sizes = () ;
-        $cfg1->clear_errors()  ;
-    }
-
-    # fill in any missing field data
     foreach my $field ( @fields ) {
         # if any titles are missing, just use the field name
         if ( not defined( $titles{ $field } )) {
-            $titles{ $field } = $field ;
-        }
-        if ( not defined( $field_sizes{ $field } )) {
-            $field_sizes{ $field } = 20 ;       # any value we give will be bad...
+            $titles{ $field } = ucfirst( $field ) ;
         }
     }
 
-    my $full_title      = 'call#' ;
-    my $full_dash_title = '-----' ;
+    # get the field sizes from the config file.
 
-    # build the title
+	my %field_sizes = () ;
+	if ( $got_keywords{ 'field-size' } ) {
+		dprint( "Got \'field-size\' keyword in section \'cdrs\'" ) ;
+		%field_sizes = $cfg1->get_values( 'cdrs', 'field-size' ) ;
+		if ( $cfg1->errors() ) {
+			# just recover and keep going
+			%field_sizes = () ;
+			$cfg1->clear_errors()  ;
+		}
 
-    if ( ! $quiet_flag ) {
-        # create titles
-        foreach my $key ( @fields ) {
-            # print title
-            my $title = $titles{ $key } ;
-            $title = "?" if ( not defined( $title )) ;
-            my $size = $field_sizes{ $key } ;
-            $size = 20 if ( not defined( $size )) ;
+		# Only use them if they are big enough to accomodate the size
+		# of the title + padding
 
-            my $dash_size = length( $title ) ;
-            my $num_dash_spaces = $size - $dash_size ;
-            my $dash_title = ( ' ' x $num_dash_spaces ) . ( '-' x $dash_size ) ;
-            $full_dash_title .= $dash_title ;
+		foreach my $field ( @fields ) {
+			if ( defined( $titles{ $field } )) {
+				my $title_len = length( $titles{ $field } ) + $padding ;
+				if ( defined( $field_sizes{ $field } )) {
+					my $field_len = $field_sizes{ $field } ;
+					if ( $field_len < $title_len ) {
+						dprint( "Not enough room for title for \'$field\'" ) ;
+						dprint( "Ignoring config value field size ($field_len) for \'$field\'" ) ;
 
-            $full_title .= sprintf( "%${size}s", $title ) ; 
-        }
-    }
+						# setting instead to value big enough for title
+						$field_sizes{ $field } = $title_len ;
+					}
+				}
+			}
+		}
+	} else {
+		dprint( "Don't have \'field-size\' keyword in section \'cdrs\'" ) ;
+	}
 
     dprint( "FROM date = $from_date" ) ;
     dprint( "TO   date = $to_date" ) ;
@@ -353,6 +358,11 @@ sub main {
         }
         return(1) ;
     }
+
+	# just ask for the CDRs ww want.  Our choices are:
+	#	answered, noanswer, busy, and failed   
+	# if set to non-zero, ask for them
+
     my $cdrs_we_want = "" ;
     foreach my $key ( keys( %cdrs_wanted )) {
         my $item = $key ;
@@ -365,6 +375,7 @@ sub main {
     }
 
     # if we want a specific account
+
     if ( $account ne "" ) {
         $cdrs_we_want .= "account=${account}&" ;
     }
@@ -407,6 +418,7 @@ sub main {
     dprint( "status = $status" ) ;
 
     # get the number of records found
+
     my $num_records = 0 ;
     foreach my $cdr_hash ( @{$cdrs} ) {
         $num_records++ ;
@@ -414,96 +426,183 @@ sub main {
     dprint( "Found $num_records CDR records" ) ;
 
     # the user may want the records in reverse order
+
     my @cdrs = @{$cdrs} ;
     if ( $reverse_flag ) {
         @cdrs = reverse( @{$cdrs} ) ;
     }
-          
-    if ( $num_records ) {
-        my $total_cost       = 0 ;
-        my $total_duration   = 0 ;
-        my %account_cost     = () ;
-        my %account_duration = () ;
-        my %account_calls    = () ;
 
-        if ( ! $quiet_flag ) {
-            my $pretty_from = pretty_date( $from_date ) ;
-            my $pretty_to   = pretty_date( $to_date ) ;
-            print "$num_records CDR records found from $pretty_from to $pretty_to" ;
-            if ( $account ne "" ) {
-                print " for account \'$account\'" ;
-            }
-            print "\n\n" ;
-            print "$full_title\n" ;
-            print "$full_dash_title\n" ;
-
-        }
-        # print the record
-        my $count = 1 ;
-        foreach my $cdr_hash ( @cdrs ) {
-            my $full_cdr_record = sprintf( "%-4d ", $count ) ;
-            $count++ ;
-            foreach my $field ( @fields ) {
-                my $val = ${$cdr_hash}{ $field} ;
-                my $size = $field_sizes{ $field } ;
-
-                $full_cdr_record .= sprintf( "%${size}s", $val ) ; 
-            }
-            print "$full_cdr_record\n" ;
-
-            if ( $costs_flag ) {
-                if ( defined( ${$cdr_hash}{ 'total' } )) {
-                    $total_cost += ${$cdr_hash}{ 'total' } ;
-                }
-                if ( defined( ${$cdr_hash}{ 'seconds' } )) {
-                    $total_duration += ${$cdr_hash}{ 'seconds' } ;
-                }
-
-                # keep tally of individual accounts
-                if ( defined( ${$cdr_hash}{ 'account' } )) {
-                    my $account = ${$cdr_hash}{ 'account' } ;
-                    if ( not defined( $account_cost{ $account } )) {
-                        # initialize the lot of them (even though we don't have to)
-                        $account_cost{ $account }     = 0 ;
-                        $account_duration{ $account } = 0 ;
-                        $account_calls{ $account }    = 0 ;
-                    }
-                    $account_calls{ $account }    += 1 ;
-                    $account_cost{ $account }     += ${$cdr_hash}{ 'total' } ;
-                    $account_duration{ $account } += ${$cdr_hash}{ 'seconds' } ;
-                }
-            }
-        }
-        if ( $costs_flag ) {
-            # Total of all calls for all accounts combined
-
-            printf "\nTotal cost is \$%.2f\n" , $total_cost ;
-            my $pretty_time = convert_seconds( $total_duration ) ;
-            print "Total duration of calls is ${pretty_time}" ;
-            if ( $total_duration > 60 ) {
-                print " ($total_duration seconds)" ;
-            }
-            print "\n" ;
-
-            # now for each account if more than one
-            my @accounts = keys( %account_cost ) ;
-            if ( @accounts > 1 ) {
-                foreach my $account ( @accounts ) {
-                    printf "\nTotal cost of %d calls for account \'%s\' is \$%.2f\n",
-                        $account_calls{ $account }, $account, $account_cost{ $account } ;
-                    my $a_duration = $account_duration{ $account } ;
-                    my $pretty_time = convert_seconds( $a_duration ) ;
-                    print "Total duration of calls for account \'$account\' is ${pretty_time}" ;
-                    if ( $a_duration > 60 ) {
-                        print " ($a_duration seconds)" ;
-                    }
-                    print "\n" ;
-                }
-            }
-        }
-    } else {
+    if ( $num_records == 0 ) {
         print "No CDR records were found\n" ;
+		return(0) ;
+	}
+
+    my $full_title      = 'call#' ;
+    my $full_dash_title = '-----' ;
+
+	# get the sizes of the data
+
+	my %data_sizes = () ;
+	foreach my $field ( @fields ) {
+		my $max_len = 0 ;
+		foreach my $cdr_hash ( @cdrs ) {
+			my $size = length( ${$cdr_hash}{ $field} ) ;
+			$max_len = $size if ( $size > $max_len ) ;
+		}
+		$data_sizes{ $field } = $max_len ;
+	}
+
+	# now set any field sizes that are missing
+
+	foreach my $field ( @fields ) {
+		my $data_len = $data_sizes{ $field } ;
+
+		# skip if given by config file.  value found in config file should include padding
+		if ( defined( $field_sizes{ $field } )) {
+			my $field_size = $field_sizes{ $field } ;
+			dprint( "Using field size ($field_size) given by config file for \'$field\'" ) ;
+		} else {
+			# not in the config file.  Use the MAX size of data plus padding
+			# But first check the titel size
+
+			my $title_len = length( $titles{ $field } ) ;
+			if ( $title_len > $data_len ) {
+				dprint( "Using TITLE size of ($title_len) for \'$field\' + padding ($padding)." ) ;
+				$data_len = $title_len ;
+			} else {
+				dprint( "Using MAX size of data ($data_len) for \'$field\' + padding ($padding)." ) ;
+			}
+			$field_sizes{ $field } = $data_len + $padding ;
+		}
+	}
+
+	# get the data.  we may need to truncate some data 
+
+	my $count = 0 ;
+	foreach my $cdr_hash ( @cdrs ) {
+		foreach my $field ( @fields ) {
+			my $data = ${$cdr_hash}{ $field } ;
+			my $data_len = length( $data ) ;
+			my $field_size = $field_sizes{ $field } ;
+			my $diff = ( $data_len + $padding ) - $field_size ;
+			if ( $diff > 0 ) {
+				dprint( "Need to truncate data for field \'$field\'" ) ;
+				$data = substr( $data, 0, $field_size - $padding - 3 ) ;		# 3 for adding 3 dots on end
+				$data .= "..." ;
+				${$cdr_hash}{ $field } = $data ;
+			}
+		}
+		$count++ ;
+	}
+
+    # build the title
+
+    if ( ! $quiet_flag ) {
+        # create titles
+        foreach my $field ( @fields ) {
+            my $title = $titles{ $field } ;
+            $title = "?" if ( not defined( $title )) ;
+
+			my $field_size = 20 ;	# won't happen
+            if ( defined( $field_sizes{ $field } )) {
+				# has to be defined...
+				$field_size = $field_sizes{ $field } ;
+			}
+
+            my $dash_size = $field_size - $padding ;
+            my $dash_title = ( ' ' x $padding ) . ( '-' x $dash_size ) ;
+            $full_dash_title .= $dash_title ;
+
+			$title = center_str( $title, $dash_size ) ;
+
+            $full_title .= ( ' ' x $padding ) . $title ;
+        }
     }
+
+
+	my $total_cost       = 0 ;
+	my $total_duration   = 0 ;
+	my %account_cost     = () ;
+	my %account_duration = () ;
+	my %account_calls    = () ;
+
+	if ( ! $quiet_flag ) {
+		my $pretty_from = pretty_date( $from_date ) ;
+		my $pretty_to   = pretty_date( $to_date ) ;
+		print "$num_records CDR records found from $pretty_from to $pretty_to" ;
+		if ( $account ne "" ) {
+			print " for account \'$account\'" ;
+		}
+		print "\n\n" ;
+		print "$full_title\n" ;
+		print "$full_dash_title\n" ;
+
+	}
+
+	# print the records
+	$count = 1 ;
+	foreach my $cdr_hash ( @cdrs ) {
+		my $full_cdr_record = sprintf( "%4d ", $count ) ;
+		$count++ ;
+		foreach my $field ( @fields ) {
+			my $val = ${$cdr_hash}{ $field} ;
+			my $size = $field_sizes{ $field } ;
+
+			$full_cdr_record .= sprintf( "%${size}s", $val ) ; 
+		}
+		print "$full_cdr_record\n" ;
+
+		if ( $costs_flag ) {
+			if ( defined( ${$cdr_hash}{ 'total' } )) {
+				$total_cost += ${$cdr_hash}{ 'total' } ;
+			}
+			if ( defined( ${$cdr_hash}{ 'seconds' } )) {
+				$total_duration += ${$cdr_hash}{ 'seconds' } ;
+			}
+
+			# keep tally of individual accounts
+			if ( defined( ${$cdr_hash}{ 'account' } )) {
+				my $account = ${$cdr_hash}{ 'account' } ;
+				if ( not defined( $account_cost{ $account } )) {
+					# initialize the lot of them (even though we don't have to)
+					$account_cost{ $account }     = 0 ;
+					$account_duration{ $account } = 0 ;
+					$account_calls{ $account }    = 0 ;
+				}
+				$account_calls{ $account }    += 1 ;
+				$account_cost{ $account }     += ${$cdr_hash}{ 'total' } ;
+				$account_duration{ $account } += ${$cdr_hash}{ 'seconds' } ;
+			}
+		}
+	}
+
+	if ( $costs_flag ) {
+		# Total of all calls for all accounts combined
+
+		printf "\nTotal cost is \$%.2f\n" , $total_cost ;
+		my $pretty_time = convert_seconds( $total_duration ) ;
+		print "Total duration of calls is ${pretty_time}" ;
+		if ( $total_duration > 60 ) {
+			print " ($total_duration seconds)" ;
+		}
+		print "\n" ;
+
+		# now for each account if more than one
+		my @accounts = keys( %account_cost ) ;
+		if ( @accounts > 1 ) {
+			foreach my $account ( @accounts ) {
+				printf "\nTotal cost of %d calls for account \'%s\' is \$%.2f\n",
+					$account_calls{ $account }, $account, $account_cost{ $account } ;
+				my $a_duration = $account_duration{ $account } ;
+				my $pretty_time = convert_seconds( $a_duration ) ;
+				print "Total duration of calls for account \'$account\' is ${pretty_time}" ;
+				if ( $a_duration > 60 ) {
+					print " ($a_duration seconds)" ;
+				}
+				print "\n" ;
+			}
+		}
+	}
 
     return(0) ;
 }
@@ -669,4 +768,28 @@ sub pretty_date {
         return( "$month ${day}, $year" ) ;
     }
     return( $date ) ;
+}
+
+
+sub center_str {
+	my $str 		= shift ;
+	my $field_size	= shift ;
+
+	if (( not defined( $field_size )) or ( $field_size == 0 )) {
+		return( $str ) ;
+	}
+
+	my $size_of_str = length( $str ) ;
+	if ( $size_of_str >= $field_size ) {
+		return( $str ) ;
+	}
+
+	my $diff = $field_size - $size_of_str ;
+	my $num_spaces = int( $diff / 2 ) ;
+
+	my $new_str = ( ' ' x $num_spaces ) . $str ;
+	$size_of_str = length( $new_str ) ;
+	$new_str .= ' ' x ( $field_size - $size_of_str ) ;
+
+	return( $new_str ) ;
 }

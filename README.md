@@ -20,7 +20,7 @@ This will print last months CDR records and the cost for account 'home':
 
 This will print the filter rules along with filter IDs to make changes to an existing rule:
 
-    % black-list --print
+    % black-list
 
 This will set a filter rule giving a Busy signal instead of the default NoService message:
 
@@ -44,6 +44,7 @@ There is a help option with each program.  For eg:
         [-d|--debug]       (debugging output)
         [-f|--from]        YYYY-MM-DD (FROM date)
         [-h|--help]        (help)
+        [-p|--padding]     number (padding between output fields (default=3)
         [-q|--quiet]       (quiet.  No headings and titles)
         [-r|--reverse]     (reverse date order of CDR output)
         [-s|--sheldon]

@@ -1,0 +1,178 @@
+.TH get-cdrs 1
+.SH NAME
+get-cdrs \- get CDR records for phone lines using voip.ms API
+.SH SYNOPSIS
+.B get-cdrs
+[
+.B \-dhqrsCVLT
+]
+[
+.B \-a account-name
+]
+[
+.B \-c config
+]
+[
+.B \-f YYYY-MM-DD
+]
+[
+.B \-p padding
+]
+[
+.B \-t YYYY-MM-DD
+]
+.SH OPTIONS
+.TP
+\fB\-a|--account\fR account-name
+use the given (sub)account-name instead of the main account and all sub-accounts
+.TP
+\fB\-c|--config\fR config-file
+use the given config file instead of the default ~/.voip-ms.conf
+.TP
+\fB\-d|--debug\fR
+print debugging messages
+.TP
+\fB\-f|--from\fR YYYY-MM-DD
+use the given date as the FROM date.
+.TP
+\fB\-h|--help\fR
+print usage and exit.
+.TP
+\fB\-p|--padding\fR number
+use the number given as the number of spaces between fields printed.
+.TP
+\fB\-q|--quiet\fR
+Don't show any headings or titles
+.TP
+\fB\-r|--reverse\fR
+Reverse the order of the CDR's printed.  Print oldest to newest.
+.TP
+\fB\-s|--sheldon\fR
+who is Sheldon...?
+.TP
+\fB\-t|--to \fR YYYY-MM-DD
+use the given date as the TO date
+.TP
+\fB\-C|--cost\fR
+total up costs and duration of CDRs
+.TP
+\fB\-L|--last-month\fR
+want CDR records for LAST month
+.TP
+\fB\-T|--this-month\fR
+want CDR records for THIS month
+.TP
+\fB\-V|--version\fR
+print version of the program and exit
+.SH EXAMPLES
+.TP
+get-cdrs --from 2017-11-15 --to 2017-11-22 --reverse
+prints the CDR records from Nov 15, 2017 to Nov 22, 1017 from oldest to latest.
+.TP
+get-cdrs --last-month --cost --account 123456
+prints the CDRs records for all of last month, but only for the account number '123456'
+.SH DESCRIPTION
+.I get-cdrs
+prints the CDR's (Call Display Records) of phone-calls using the API for voip.ms.
+Unless a specific phone line is specified using the --account option, then all records
+for all accounts and sub-accounts are printed.
+.PP
+A config file called .voip-ms.conf, found in the users HOME directory by default, is used
+to specify authentication information to gather the records using the voip.ms API.
+The config file specifies which information fields are wanted, and what order they are
+printed in the output and what the titles should be.
+.PP
+Although the section 'title' must exist in the config file, if any of the individual titles
+for a field are missing, then the field-name will be used instead, with the first letter
+capitalized.  For example, if no title for the field 'callerid' is specified, then the
+title printed will be 'Callerid'.
+.PP
+The config file section called 'field-size' is optional.  It can specify the size of fields
+to be used, which includes a padding (which defaults to 3 spaces).  However, if it is not
+given, the program will determine the maximum length of data for that field, add the padding
+length (which can be changed with the --padding option) and uses that to determine space to
+use.  This is the most space efficient and pretty way to use the program, not specifying the
+field-sizes.  However, it means the sizes of fields can change between runs, depending of the
+maximum length of the data at the time.  If it is desired or necessary to have consistent
+fields-sizes for, say, monthly reports, then use the 'field-sizes' section of the config file.
+Note that a specified field-size will be ignored if it is not enough to accommodate the size of
+the title for the field.  If the data is too large for whatever field size may be specified,
+it will be truncated and ended with 3 dots to indicate that there was more data.
+.PP
+Be sure to set the timezone correctly in the 'time' section in the config file.  It is best to
+verify it is correct by using this program output and comparing it to the time stamp you
+see on your calls on the web-site, or better yet, against a call you just made where you know
+the correct time it was made.
+.PP
+To use this program, you will have to set up access for the IP number you are running this program
+from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH CONFIG FILE
+The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
+is used for several programs that use the voip.ms API.
+The config file is shared, mainly so there is a single centralized location for authentication data for access 
+to the API.
+.PP
+The required sections in the config file for the \fIget-cdrs\fP program are:
+.PP
+.RS 5n
+.TP
+.B authentication:
+    user                = me@foo.bar
+.br
+    pass                = GabbaGabba
+.TP
+.B time:
+    timezone            = -5
+.TP
+.B cdrs:
+.nf
+    cdrs-wanted (hash)  = answered  = 1, \\
+                          noanswer  = 1, \\
+                          busy      = 1, \\
+                          failed    = 1
+
+    order (array)       = date, callerid, destination, description, \\
+                          duration, disposition
+
+    title (hash)       = \\
+                          date        = 'Date and Time', \\
+                          callerid    = CallerID, \\
+                          destination = Destination, \\
+                          description = Description, \\
+                          duration    = Duration, \\
+                          rate        = Rate, \\
+                          total       = 'Total cost', \\
+                          disposition = Disposition
+
+#    field-size (hash)   = date        = 22, \\
+#                          callerid    = 35, \\
+#                          destination = 15, \\
+#                          description = 22, \\
+#                          duration    = 12, \\
+#                          rate        = 12, \\
+#                          total       = 12, \\
+#                          disposition = 12
+.fi
+.RE
+.PP
+The 'field-size' is optional, and as can be seen in the above example, that section is
+commented out.
+.PP
+The 'title' section must exist, but if the individual fields are not given or do not match
+real field names, then the field-name will be used as the title, with the first letter capitalized.
+.PP
+The 'order' specifies the order of output of the fields, as well as which fields are wanted.  The available 
+fields are date, callerid, destination, description, duration, rate, total, and disposition.
+.PP
+The 'cdrs-wanted' specify which classifiction of CDR records are wanted.  If the value of 1 is given,
+then they are wanted.  There are 4 different classes of CDRs:  answered, noanswer, busy and failed.
+.SH SEE ALSO
+black-list(1)
+.br
+get-did-info(1)
+.SH AUTHOR
+RJ White
+.br
+rj@moxad.com
+.br
+Moxad Enterprises Inc.
