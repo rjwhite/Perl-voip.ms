@@ -116,3 +116,9 @@
             - written
         - doc/man/man1/{black-list.1,get-cdrs.1,get-did-info.1}:
             - added send-sms-message.1 in 'SEE ALSO' section
+
+0.8.1   May 4, 2019
+        - README.md:
+            - include an example calling send-msm-message
+        - send-sms-message.plx:
+            - the 'did' number now supports aliases from the config file

@@ -38,7 +38,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.1" ;
+my $G_version    = "v0.2" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -209,29 +209,41 @@ sub main {
     my $url = "https://voip.ms/api/v1/rest.php" .
         "?api_username=${user}&api_password=${pass}" ;
 
-    my $did       = $values{ 'did' } ;
-    $did          =~ s/-//g ;      # remove any dashes
-    my $recipient = $values{ 'recipient' } ;
+    # get the DID - the line the message will come from
+
+    my $did = $values{ 'did' } ;
 
     # see if there are any aliases, and if one was used
 
+    my $recipient = $values{ 'recipient' } ;
     if ( defined( $values{ 'aliases' } )) {
         my %aliases = %{$values{ 'aliases' }} ;
         foreach my $alias ( keys( %aliases )) {
             if ( $recipient eq $alias ) {
-                dprint( "MATCHED alias of $recipient" ) ;
+                dprint( "MATCHED alias of RECIPIENT \'$recipient\'" ) ;
                 $recipient = $aliases{ $alias } ;
                 dprint( "RECIPIENT changed to \'$recipient\'" ) ;
-                last ;
+            }
+            if ( $did eq $alias ) {
+                dprint( "MATCHED alias of DID \'$did\'" ) ;
+                $did = $aliases{ $alias } ;
+                dprint( "DID changed to \'$did\'" ) ;
             }
         }
     } else {
         dprint( "No aliases defined" ) ;
     }
 
-    $recipient =~ s/-//g ;      # remove any dashes
+    # remove any dashes from phone numbers
+    $did       =~ s/-//g ;
+    $recipient =~ s/-//g ;
+
     if ( $recipient !~ /^\d+$/ ) {
         print "$G_progname: recipient ($recipient) must be a phone number\n" ;
+        return(1) ;
+    }
+    if ( $did !~ /^\d+$/ ) {
+        print "$G_progname: DID ($did) must be a phone number\n" ;
         return(1) ;
     }
 

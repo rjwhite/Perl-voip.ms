@@ -34,6 +34,10 @@ This will print all data about each DID, with the phone-number preceded by the (
 
     % get-did-info --account --all
 
+This will send a SMS message to barney (an alias set up in the config file):
+
+    % send-sms-message -r barney Time for a beer
+
 There is a help option with each program.  For eg:
 
     % get-cdrs --help
