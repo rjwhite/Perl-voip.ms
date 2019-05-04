@@ -96,5 +96,23 @@
             - now preserves old exiting values if a change is being made to only
               1 or 2 items (routing, note, did, etc)
             - total overhaul.  refactoring
-        - .voip-ms.conf
+        - .voip-ms.conf:
             - commented out the 'field-size' section and added comments
+              in 'cdrs' section
+
+0.8     May 3, 2019
+        - send-sms-message.plx:
+            - created
+        - Makefile:
+            - updated for send-sms-message
+            - fixed comment for installation location as root
+        - .voip-ms.conf:
+            - added 'sms' section with 'did'
+        - black-list.plx:
+            - fixed comment to refer to proper required Config module
+        - .voip-ms.conf:
+            - added aliases and 'did' keywords in 'sms' section
+        - doc/man/man1/send-sms-message.1:
+            - written
+        - doc/man/man1/{black-list.1,get-cdrs.1,get-did-info.1}:
+            - added send-sms-message.1 in 'SEE ALSO' section

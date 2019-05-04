@@ -1,4 +1,5 @@
 package to allow use of WWW::Curl CPAN Perl module on Linux:
+    apt-get install libwww-curl-per
     apt-get install libcurl4-gnutls-dev
 
 CPAN modules:

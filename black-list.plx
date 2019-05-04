@@ -8,7 +8,7 @@
 # on a Linix Mint system with: 'apt-get install libcurl4-gnutls-dev'
 
 # Needs Moxad::Config found on github.com under user rjwhite
-#   https://github.com/rjwhite/Python-config-module
+#   https://github.com/rjwhite/Perl-config-module
 
 # black-list --help      ( print usage )
 # black-list             ( print the list of filters along with rule IDs )

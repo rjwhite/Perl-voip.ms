@@ -1,4 +1,4 @@
-# If you run a install as root, it will install into a python system directory
+# If you run a install as root, it will install into a system directory
 # Otherwise it will install into your HOME
 
 SYS_MANPAGES	= /usr/local/man/man1
@@ -19,6 +19,7 @@ ${DEST_DIR}/voip:
 		install -p -m ${MODE} get-cdrs.plx ${SYS_DEST_DIR}/get-cdrs ;\
 		install -p -m ${MODE} black-list.plx ${SYS_DEST_DIR}/black-list ;\
 		install -p -m ${MODE} get-did-info.plx ${SYS_DEST_DIR}/get-did-info ;\
+		install -p -m ${MODE} send-sms-message.plx ${SYS_DEST_DIR}/send-sms-message ;\
 		install -p -m ${MODE} write-phone-CDR-records.sh ${SYS_DEST_DIR}/write-phone-CDR-records ;\
 	else \
 		echo "I am NOT Groot!" ; \
@@ -29,6 +30,7 @@ ${DEST_DIR}/voip:
 		install -p -m ${MODE} get-cdrs.plx ${USER_DEST_DIR}/get-cdrs ;\
 		install -p -m ${MODE} black-list.plx ${USER_DEST_DIR}/black-list ;\
 		install -p -m ${MODE} get-did-info.plx ${USER_DEST_DIR}/get-did-info ;\
+		install -p -m ${MODE} send-sms-message.plx ${USER_DEST_DIR}/send-sms-message ;\
 		install -p -m ${MODE} write-phone-CDR-records.sh ${USER_DEST_DIR}/write-phone-CDR-records ;\
 	fi
 

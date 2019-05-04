@@ -1,0 +1,97 @@
+.TH send-sms-message 1
+.SH NAME
+send-sms-message \- send an text message to a phone number
+.SH SYNOPSIS
+.B send-sms-message
+[ OPTIONS ]
+.B \-r phone-number
+message-to-send
+.SH OPTIONS
+.TP
+\fB\-c|--config\fR config-file
+use the given config file instead of the default ~/.voip-ms.conf
+.TP
+\fB\-d|--debug\fR
+print debugging messages
+.TP
+\fB\-h|--help\fR
+print usage and exit.
+.TP
+\fB\-l|--line\fR phone-number
+phone line to send the message from, other than the default from the config file,
+called the \fIdid\fP (Direct Inward Dialing).
+.TP
+\fB\-n|--no-send\fR
+don't send the message, but show the URL to send to the API
+.TP
+\fB\-r|--recipient\fR phone-number
+The phone number to send the message to.
+.TP
+\fB\-V|--version\fR
+print the version number of the program.
+.SH EXAMPLES
+.TP
+send-sms-message -r 555-123-4567 this is a test
+send a message to a phone number
+.TP
+send-sms-message -r rj this is another test
+send a message to rj (an alias in the config file)
+.TP
+send-sms-message -rj rj -l 555-555-6767 Gabba Gabba Hey
+send a message to rj (an alias), but send it from a different line.
+.SH DESCRIPTION
+.I send-sms-message
+sends a text message to a phone number, from a number belonging to the user at
+Voip.ms.
+The default phone number belonging to the user is found in the
+config file .voip-ms.conf in the HOME directory.  The phone line the message
+is sent from can be changed with the --line option.
+.PP
+The phone number, both the recipient and the number the message is sent from,
+can have dashes in it to make it more human readable.  The recipient
+phone number can also be an alias, set in the config file.
+.PP
+To use this program, the user will have to set up access for the IP number 
+running this program from.
+Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH CONFIG FILE
+The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
+is used for several programs that use the voip.ms API.
+The config file is shared, mainly so there is a single centralized location for authentication data for access 
+to the API.
+.PP
+The required sections in the config file for the \fIsend-sms-message\fP program are:
+.PP
+.RS 5n
+.TP
+.B authentication:
+    user       = me@foo.bar
+.br
+    pass       = GabbaGabba
+.TP
+.B sms:
+.nf
+    did        = 519-555-1212
+
+    aliases (hash) = fred   = 555-123-0001, \\
+                     wilma  = 555-123-0002, \\
+                     barney = 555-234-0003, \\
+                     betty  = 555-234-0004
+
+.fi
+.RE
+.PP
+The 'did' keyword is optional, but if it is not set it in the config file, then 
+the --line option will need to be provided with each usage.
+.SH SEE ALSO
+get-cdrs(1)
+.br
+get-did-info(1)
+.br
+black-list.1
+.SH AUTHOR
+RJ White
+.br
+rj@moxad.com
+.br
+Moxad Enterprises Inc.
