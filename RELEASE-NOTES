@@ -119,6 +119,12 @@
 
 0.8.1   May 4, 2019
         - README.md:
-            - include an example calling send-msm-message
+            - include an example calling send-sms-message
         - send-sms-message.plx:
             - the 'did' number now supports aliases from the config file
+
+0.8.2  May 4, 2019
+        - RELEASE-NOTES:
+            - fixed a typo
+        - send-sms-message.plx:
+            - fixed usage message

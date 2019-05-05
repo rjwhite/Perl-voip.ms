@@ -38,7 +38,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.2" ;
+my $G_version    = "v0.3" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -152,8 +152,8 @@ sub main {
 
     # now that the dust has settled with defaults, config values and options...
     if ( $help_flag ) {
-        printf "usage: %s [options]* message-to-send\n" .
-            "%s %s %s %s %s %s",
+        printf "usage: %s [option]* -r recipient message-to-send\n" .
+            "%s %s %s %s %s %s %s",
             $G_progname,
             "\t[-c|--config file]   (config-file. default=$config_file)\n",
             "\t[-d|--debug]         (debugging output)\n",
