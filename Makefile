@@ -7,9 +7,7 @@ SYS_DEST_DIR	= /usr/local/bin
 USER_DEST_DIR	= ${HOME}/bin
 MODE			= 755
 
-install:	${DEST_DIR}/voip
-
-${DEST_DIR}/voip:
+install:
 	@if [ `whoami` = 'root' ]; then \
 		echo "I am Groot!" ; \
 		echo "Installing scripts into ${SYS_DEST_DIR}" ; \

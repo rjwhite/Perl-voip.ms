@@ -128,3 +128,7 @@
             - fixed a typo
         - send-sms-message.plx:
             - fixed usage message
+
+0.8.3   May 10, 2019
+        - Makefile:
+            - removed extraneous crap
