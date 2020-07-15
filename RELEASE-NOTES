@@ -132,3 +132,30 @@
 0.8.3   May 10, 2019
         - Makefile:
             - removed extraneous crap
+
+0.9     July 15, 2020
+        - README.install:
+            - created
+        - *.plx:
+            - refactoring.  making lines less than 80 chars, replaced TABs
+            - making sure all errors go to STDERR
+            - dprint() now prepends debug strings with 'debug: '
+            - overhauled how it finds its config.  It will use the last
+              config file that exists, in the order of:
+                    ${HOME}/.voip-ms.conf
+                    environment variable VOIP_MS_CONFIG_FILE
+                    given by option -c/--config
+              The intention is that if you have your config, which has
+              authentication info, in a mountable encrypted vault, that
+              the commands are only useable when you have mounted that
+              decrypted vault, say on a laptop, but if your laptop gets
+              stolen, that voip.ms authentication info is safely encrypted.
+              You can best iumplement that by using the environment
+              variable VOIP_MS_CONFIG_FILE instead of having to supply
+              the option -c/--config each time
+        - get-cdrs.plx, get-did-info.plx:
+            - moved the printing of usage until after config file read
+              so we can correctly print defaults, etc
+        - doc/man/man1/black-list.1, doc/man/man1/get-cdrs.1,
+          doc/man/man1/get-did-info.1, doc/man/man1/send-sms-message.1:
+            - add ENVIRONMENT VARIABLES section

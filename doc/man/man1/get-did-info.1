@@ -96,6 +96,12 @@ The required section in the config file for the \fIget-did-info\fP program is:
     pass   = GabbaGabba
 .RE
 .PP
+.SH ENVIRONMENT VARIABLES
+VOIP_MS_CONFIG_FILE
+.br
+If the environment variable VOIP_MS_CONFIG_FILE is set, and if the file exists, it will
+be used instead of the default ${HOME}/.voip-ms.conf - unless it is over-ridden by the
+config file options -c or --config
 .SH SEE ALSO
 black-list(1)
 .br

@@ -37,7 +37,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.1" ;
+my $G_version    = "v0.9" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -52,9 +52,10 @@ if ( main() ) {
 
 sub main {
     my $home                = $ENV{ HOME } ;
-    my $config_file =       "${home}/.voip-ms.conf" ;
+    my $config_file =       undef ;
     my $method              = "getDIDsInfo" ;
     my $did                 = undef ;
+    my $help_flag           = 0 ;
     my $account_names_flag  = 0 ;
     my $all_info_flag       = 0 ;
     my $error ;
@@ -64,17 +65,7 @@ sub main {
     for ( my $i = 0 ; $i <= $#ARGV ; $i++ ) {
         my $arg = $ARGV[ $i ] ;
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
-            printf "usage: %s [options]*\n" .
-                "%s %s %s %s %s %s %s",
-                $G_progname,
-                "\t[-a|--all]           all info about did(s)\n",
-                "\t[-c|--config]        config-file\n",
-                "\t[-d|--debug]         (debugging output)\n",
-                "\t[-h|--help]          (help)\n",
-                "\t[-A|--account]       print (sub)account name(s) instead of DID\n",
-                "\t[-D|--did]           specific phone-number (which line)\n",
-                "\t[-V|--version]       (print version of this program)\n" ;
-            return(0) ;
+            $help_flag++ ;
         } elsif (( $arg eq "-a" ) or ( $arg eq "--all" )) {
             $all_info_flag++ ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
@@ -103,8 +94,17 @@ sub main {
             print STDERR "$G_progname: did is not numeric: $did\n" ;
             return(1) ;
         }
-        dprint( "Using a DID of $did" ) ;
+        dprint( "using a DID of $did" ) ;
     }
+
+    # find the config file we really want
+
+    $config_file = find_config_file( $config_file ) ;
+    if ( not defined( $config_file )) {
+        print STDERR "$G_progname: no config file found\n" ;
+        return(1) ;
+    }
+    dprint( "using config file: $config_file" ) ;
 
     # read in config data
 
@@ -115,7 +115,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -132,11 +132,27 @@ sub main {
     my $num_errors = 0 ;
     foreach my $section ( @needed_sections ) {
         if ( not defined( $got_sections{ $section } )) {
-            print STDERR "$G_progname: missing section \'$section\' in $config_file\n" ;
+            my $err = "missing section \'$section\' in $config_file" ;
+            print STDERR "$G_progname: $err\n" ;
             $num_errors++ ;
         }
     }
     return(1) if ( $num_errors ) ;
+
+    if ( $help_flag ) {
+        printf "usage: %s [options]*\n" .
+            "%s %s %s %s %s %s %s",
+            $G_progname,
+            "\t[-a|--all]           all info about did(s)\n",
+            "\t[-c|--config]        config-file (default=$config_file)\n",
+            "\t[-d|--debug]         (debugging output)\n",
+            "\t[-h|--help]          (help)\n",
+            "\t[-A|--account]       print (sub)account name(s) instead of DID\n",
+            "\t[-D|--did]           specific phone-number (which line)\n",
+            "\t[-V|--version]       (print version of this program)\n" ;
+
+        return(0) ;
+    }
 
     # good to go.  get authentication info
 
@@ -149,7 +165,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -184,7 +200,8 @@ sub main {
 
     my $retcode = $curl->perform() ;
     if ( $retcode ) {
-        print STDERR "$G_progname: " . $curl->strerror($retcode), " ($retcode)\n" ;
+        my $err = $curl->strerror($retcode) . ", ($retcode)" ;
+        print STDERR "$G_progname: $err\n" ;
         print STDERR "$G_progname: errbuf: ", $curl->errbuf . "\n" ;
         return(1) ;
     }
@@ -193,7 +210,8 @@ sub main {
 
     my $status = $json->{ 'status' } ;
     if ( not defined( $status )) {
-        print STDERR "$G_progname: could not get \'status\' in JSON return\n" ;
+        my $err = "could not get \'status\' in JSON return" ;
+        print STDERR "$G_progname: $err\n" ;
         return(1) ;
     }
     dprint( "status = $status" ) ;
@@ -205,11 +223,13 @@ sub main {
 
     my $dids = $json->{ 'dids' } ;
     if ( not defined( $dids )) {
-        print STDERR "$G_progname: could not get \'dids\' info array in JSON return\n" ;
+        my $err = "could not get \'dids\' info array in JSON return" ;
+        print STDERR "$G_progname: $err\n" ;
         return(1) ;
     }
 
-    # find out number of entries,  get an ordered list of keys, and get max length
+    # find out number of entries,  get an ordered list of keys, and get
+    # max length
 
     my $num_entries      = 0 ;
     my $got_ordered_keys = 0 ;
@@ -245,9 +265,9 @@ sub main {
 
         if ( $account_names_flag ) {
             $account =~ s/^account:// ;
-            print "${account}:${line}\n" ;        # prepend (sub)account name
+            print "${account}:${line}\n" ;  # prepend (sub)account name
         } else {
-            print "$line\n" ;                   # print just the DID number
+            print "$line\n" ;               # print just the DID number
         }
 
         # print all our info for the DID
@@ -266,13 +286,56 @@ sub main {
 }
 
 
-
 # debug print
+# Arguments:
+#     1: string to print
+# Returns:
+#     0
+# Globals:
+#     $G_debug
 
 sub dprint {
     my $msg = shift ;
     return(0) if ( $G_debug == 0 ) ;
 
-    print "$msg\n" ;
+    print "debug: $msg\n" ;
     return(0) ;
+}
+
+
+# find the config file we really want and that exists
+# accept the *last* existing one in the order of:
+#   $ENV{ HOME }/.voip-ms.conf
+#   $ENV{ VOIP_MS_CONFIG_FILE }
+#   given by opition -c or --config
+#
+# Arguments:
+#     1:  value given with option to program
+# Returns:
+#     config-file (which could be undef)
+# Globals:
+#     none
+
+sub find_config_file {
+    my $config_option = shift ;
+
+    my @configs = () ;
+    my $final_config = undef ;
+
+    # first the HOME directory
+    my $home = $ENV{ HOME } ;
+    push( @configs, "${home}/.voip-ms.conf" ) ;
+
+    # next an environment variable
+    my $c = $ENV{ 'VOIP_MS_CONFIG_FILE' } ;
+    push( @configs, $c ) if ( defined( $c )) ;
+
+    # finally if an over-riding option was given
+    push( @configs, $config_option ) if defined( $config_option ) ;
+
+    # accept the last one found that exists
+    foreach my $c ( @configs ) {
+        $final_config = $c if ( -f $c ) ;
+    }
+    return( $final_config ) ;
 }

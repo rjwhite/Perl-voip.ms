@@ -1,0 +1,30 @@
+There is an example .voip-ms.conf config file.
+You probably want to install this into your $HOME directory, after making
+necessary changes, particularly to the 'authentication' section.
+
+Another possibility is to install it into an alternate location and
+set an environment variable called VOIP_MS_CONFIG_FILE to point to it.
+
+Otherwise, you can use the -c or --config option, which is a bit cumbersome
+to do each time.
+
+One reason you may wish to use the environment variable VOIP_MS_CONFIG_FILE
+instead of a $HOME/.voip-ms.conf is because it is on a portable device like
+a laptop that you are concerned may be stolen one day and your voip.ms
+API authentication info will be found.  So, you could have an encrypted
+volume, like say a Veracrypt vault, that you mount when you are using your
+laptop when logged in, and then VOIP_MS_CONFIG_FILE points to an existing
+config file that the programs will use.
+
+It is ok for VOIP_MS_CONFIG_FILE to point to a non-existent file (when your
+Veracrypt valid is NOT mounted - because these programs will only try to
+use a config file that it finds.  It will use the *last* existing config 
+file that is found, that are checked in order of:
+    $HOME/.voip-ms.conf
+    environment variable VOIP_MS_CONFIG_FILE
+    <given by -c/--config option>
+
+It does NOT use the first one found - it uses the *last* *existing*
+one - so you can have more than one location of the config file.
+So, the option --config will override a config found by previous methods
+

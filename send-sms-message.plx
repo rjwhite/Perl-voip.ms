@@ -38,7 +38,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.3" ;
+my $G_version    = "v0.9" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -53,7 +53,7 @@ if ( main() ) {
 
 sub main {
     my $home        = $ENV{ HOME } ;
-    my $config_file = "${home}/.voip-ms.conf" ;
+    my $config_file = undef ;
     my $method      = "sendSMS" ;
     my $error       = "" ;
 
@@ -95,6 +95,15 @@ sub main {
         }
     }
 
+    # find the config file we really want
+
+    $config_file = find_config_file( $config_file ) ;
+    if ( not defined( $config_file )) {
+        print STDERR "$G_progname: no config file found\n" ;
+        return(1) ;
+    }
+    dprint( "using config file: $config_file" ) ;
+
     # read in config data
 
     Moxad::Config->set_debug( 0 ) ;
@@ -104,7 +113,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -121,7 +130,8 @@ sub main {
     my $num_errors = 0 ;
     foreach my $section ( @needed_sections ) {
         if ( not defined( $got_sections{ $section } )) {
-            print STDERR "$G_progname: missing section \'$section\' in $config_file\n" ;
+            my $err = "missing section \'$section\' in $config_file" ;
+            print STDERR "$G_progname: $err\n" ;
             $num_errors++ ;
         }
     }
@@ -157,9 +167,11 @@ sub main {
             $G_progname,
             "\t[-c|--config file]   (config-file. default=$config_file)\n",
             "\t[-d|--debug]         (debugging output)\n",
-            "\t[-n|--no-send]       (don't send the message, but show URL to send)\n",
+            "\t[-n|--no-send]       (don't send the message, but show URL " .
+                 "to send)\n",
             "\t[-h|--help]          (help)\n",
-            "\t[-l|--line]          sender DID-phone-number (default=$values{ 'did' })\n", 
+            "\t[-l|--line]          sender DID-phone-number " .
+                "(default=$values{ 'did' })\n", 
             "\t[-V|--version]       (print version)\n",
             "\t-r|--recipient phone-number\n" ;
 
@@ -193,7 +205,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -239,17 +251,19 @@ sub main {
     $recipient =~ s/-//g ;
 
     if ( $recipient !~ /^\d+$/ ) {
-        print "$G_progname: recipient ($recipient) must be a phone number\n" ;
+        my $err = "recipient ($recipient) must be a phone number" ;
+        print "$G_progname: $err\n" ;
         return(1) ;
     }
     if ( $did !~ /^\d+$/ ) {
-        print "$G_progname: DID ($did) must be a phone number\n" ;
+        print STDERR "$G_progname: DID ($did) must be a phone number\n" ;
         return(1) ;
     }
 
     $message = URI::Escape::uri_escape( $message ) ;
 
-    $url .= "&method=${method}&dst=${recipient}&did=${did}&message=${message}" ;
+    $url .= "&method=${method}&dst=${recipient}&did=${did}" .
+            "&message=${message}" ;
     dprint( "URL = $url" ) ;
 
     if ( $no_send_flag ) {
@@ -264,7 +278,8 @@ sub main {
     my $ret = send_request( $url, \@errors, \$json_ref ) ;
     if ( $ret ) {
         if ( @errors == 0 ) {
-            print STDERR "${G_progname}: Arg 2 to send_request() must be bad\n" ;
+            my $err = "Arg 2 to send_request() must be bad" ;
+            print STDERR "${G_progname}: $err\n" ;
             return(1) ;
         }
         foreach my $error ( @errors ) {
@@ -301,11 +316,13 @@ sub send_request {
         return(1) ;
     }
     if (( not defined( $url )) or ( $url eq "" )) {
-        push( @{$error_ref},  "${i_am}: (Arg 1) URL is undefined or empty string" ) ;
+        my $err = "${i_am}: (Arg 1) URL is undefined or empty string" ;
+        push( @{$error_ref}, $err ) ;
         return(1) ;
     }
     if (( ref( $json_ref ) eq "" ) or ( ref( $json_ref ) ne "SCALAR" )) {
-        push( @{$error_ref},  "${i_am}: Arg 3 is not a SCALAR reference to return data" ) ;
+        my $err = "${i_am}: Arg 3 is not a SCALAR reference to return data" ;
+        push( @{$error_ref}, $err ) ;
         return(1) ;
     }
 
@@ -325,8 +342,9 @@ sub send_request {
 
     my $retcode = $curl->perform() ;
     if ( $retcode ) {
-        push( @{$error_ref},  "${i_am}: " . $curl->strerror($retcode) . " ($retcode)" ) ;
-        push( @{$error_ref}, "${i_am}: errbuf: " . $curl->errbuf . "\n" ) ;
+        my $err = $curl->strerror($retcode) . ", ($retcode)" ;
+        print STDERR "$G_progname: $err\n" ;
+        print STDERR "$G_progname: errbuf: ", $curl->errbuf . "\n" ;
         return(1) ;
     }
 
@@ -351,16 +369,54 @@ sub send_request {
 # debug print
 #
 # Arguments:
-#   1:  message
+#     1:  message
 # Returns:
-#   0
+#     0
 # Globals:
-#   $G_debug
+#     $G_debug
 
 sub dprint {
     my $msg = shift ;
     return(0) if ( $G_debug == 0 ) ;
 
-    print "$msg\n" ;
+    print "debug: $msg\n" ;
     return(0) ;
+}
+
+
+# find the config file we really want and that exists
+# accept the *last* existing one in the order of:
+#   $ENV{ HOME }/.voip-ms.conf
+#   $ENV{ VOIP_MS_CONFIG_FILE }
+#   given by opition -c or --config
+#
+# Arguments:
+#     1:  value given with option to program
+# Returns:
+#     config-file (which could be undef)
+# Globals:
+#     none
+
+sub find_config_file {
+    my $config_option = shift ;
+
+    my @configs = () ;
+    my $final_config = undef ;
+
+    # first the HOME directory
+    my $home = $ENV{ HOME } ;
+    push( @configs, "${home}/.voip-ms.conf" ) ;
+
+    # next an environment variable
+    my $c = $ENV{ 'VOIP_MS_CONFIG_FILE' } ;
+    push( @configs, $c ) if ( defined( $c )) ;
+
+    # finally if an over-riding option was given
+    push( @configs, $config_option ) if defined( $config_option ) ;
+
+    # accept the last one found that exists
+    foreach my $c ( @configs ) {
+        $final_config = $c if ( -f $c ) ;
+    }
+    return( $final_config ) ;
 }

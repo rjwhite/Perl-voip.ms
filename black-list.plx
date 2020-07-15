@@ -41,7 +41,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.3" ;
+my $G_version    = "v0.9" ;
 my $G_debug      = 0 ;
 
 my $C_ROUTING_NO_SERVICE   = "noservice" ;
@@ -60,10 +60,9 @@ if ( main() ) {
 
 
 sub main {
-    my $home        = $ENV{ HOME } ;
-    my $config_file = "${home}/.voip-ms.conf" ;
-    my $method      = "setCallerIDFiltering" ;
-    my %routing_types   = (
+    my $config_file = undef ;
+    my $method = "setCallerIDFiltering" ;
+    my %routing_types = (
         $C_ROUTING_NO_SERVICE   => 1,
         $C_ROUTING_BUSY         => 1,
         $C_ROUTING_HANG_UP      => 1,
@@ -125,14 +124,16 @@ sub main {
             return(1) ;
         } else {
             if ( $caller_id ne "" ) {
-                print STDERR "$G_progname: already provided a callerid: $caller_id\n" ;
+                my $err = "already provided a callerid: $caller_id" ;
+                print STDERR "$G_progname: $err\n" ;
                 return(1) ;
             }
             $caller_id = $ARGV[ $i ] ;
         }
     }
 
-    if (( defined( $options{ 'routing' } )) or ( defined( $options{ 'did' } )) or
+    if (( defined( $options{ 'routing' } )) or 
+        ( defined( $options{ 'did' } )) or
         ( defined( $options{ 'note' } ))) {
             dprint( "SET flag set (changing/setting values)" ) ;
             $set_flag++ ;
@@ -142,7 +143,8 @@ sub main {
         dprint( "No Caller ID given" ) ;
         if ( $delete_flag ) {
             if ( $filtering_id eq "" ) {
-                print STDERR "$G_progname: Need to provide filter ID to delete an entry\n" ;
+                my $err = "Need to provide filter ID to delete an entry" ;
+                print STDERR "$G_progname: $err\n" ;
                 return(1) ;
             }
             $method = "delCallerIDFiltering" ;
@@ -150,7 +152,9 @@ sub main {
             if ( $set_flag ) {
                     # should be making modifications to an exsiting rule
                     if ( $filtering_id eq "" ) {
-                        print STDERR "$G_progname: Need to provide filter ID to modify an entry\n" ;
+                        my $err = "Need to provide filter ID to modify " .
+                                  "an entry" ;
+                        print STDERR "$G_progname: $err\n" ;
                         return(1) ;
                     }
                     $method = "setCallerIDFiltering" ;
@@ -162,7 +166,8 @@ sub main {
     } else {
         dprint( "Caller ID given: $caller_id" ) ;
         if ( $delete_flag ) {
-            print STDERR "$G_progname: huh?!  You gave a --delete option as well!\n" ;
+            my $err = "huh?!  You gave a --delete option as well!" ;
+            print STDERR "$G_progname: $err\n" ;
             return(1) ;
         }
         $method = "setCallerIDFiltering" ;
@@ -174,6 +179,15 @@ sub main {
         }
     }
 
+    # find the config file we really want
+
+    $config_file = find_config_file( $config_file ) ;
+    if ( not defined( $config_file )) {
+        print STDERR "$G_progname: no config file found\n" ;
+        return(1) ;
+    }
+    dprint( "using config file: $config_file" ) ;
+
     # read in config data
 
     Moxad::Config->set_debug( 0 ) ;
@@ -183,7 +197,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -200,7 +214,8 @@ sub main {
     my $num_errors = 0 ;
     foreach my $section ( @needed_sections ) {
         if ( not defined( $got_sections{ $section } )) {
-            print STDERR "$G_progname: missing section \'$section\' in $config_file\n" ;
+            my $err = "missing section \'$section\' in $config_file" ;
+            print STDERR "$G_progname: $err\n" ;
             $num_errors++ ;
         }
     }
@@ -215,8 +230,8 @@ sub main {
         $defaults{ $keyword } = $value ;
     }
 
-    # we defer printing out the help info till after we have set defaults and
-    # read out config file, so we can see defaults in the usage printed
+    # we defer printing out the help info till after we have set defaults
+    # and read our config file, so we can see defaults in the usage printed
 
     if ( $help_flag ) {
         my $routing_str = "${C_ROUTING_NO_SERVICE}|${C_ROUTING_BUSY}|" .
@@ -242,7 +257,6 @@ sub main {
         return(0) ;
     }
 
-
     # good to go.  get authentication info
 
     my %auth_values = () ;
@@ -254,7 +268,7 @@ sub main {
     if ( $cfg1->errors() ) {
         my @errors = $cfg1->errors() ;
         foreach my $error ( @errors ) {
-            print "$G_progname: $error\n" ;
+            print STDERR "$G_progname: $error\n" ;
         }
         return(1) ;
     }
@@ -286,7 +300,8 @@ sub main {
             # make sure we have all the values we need
 
             foreach my $field ( keys( %defaults )) {
-                # first grab the defaults - which were over-ridden by the config file
+                # first grab the defaults - which were over-ridden by the 
+                # config file
                 if ( not defined( $new_values{ $field } )) {
                     my $default = $defaults{ $field } ;
                     dprint( "Setting default for $field of \'$default\'" ) ;
@@ -296,7 +311,9 @@ sub main {
                 # options given over-ride these defaults
                 if ( defined( $options{ $field } )) {
                     my $value = $options{ $field } ;
-                    dprint( "Overriding default with opition for $field with $value" ) ;
+                    my $msg = "Overriding default with opition for $field " .
+                               "with $value" ;
+                    dprint( $msg ) ;
                     $new_values{ $field } = $value ;
                 }
             }
@@ -306,11 +323,13 @@ sub main {
 
             my $old_values_ref ;
             my @errors = () ;
-            $url =  $base_url . "&method=getCallerIDFiltering&filtering=$filtering_id" ;
+            $url =  $base_url .
+                    "&method=getCallerIDFiltering&filtering=$filtering_id" ;
             my $ret = send_request( $url, \@errors, \$old_values_ref ) ;
             if ( $ret ) {
                 if ( @errors == 0 ) {
-                    print STDERR "${G_progname}: Arg 2 to send_request() must be bad\n" ;
+                    my $err = "Arg 2 to send_request() must be bad" ;
+                    print STDERR "${G_progname}: $err\n" ;
                     return(1) ;
                 }
                 foreach my $error ( @errors ) {
@@ -323,7 +342,8 @@ sub main {
             my $filtering = ${$old_values_ref}->{ 'filtering' } ;
             my $num_entries = @{$filtering} ;
             if ( $num_entries != 1 ) {
-                print STDERR "${G_progname}: Got $num_entries instead of expected 1\n" ;
+                my $err = "Got $num_entries instead of expected 1" ;
+                print STDERR "${G_progname}: $err\n" ;
                 return(1) ;
             }
             my $entry_ref = ${$filtering}[0] ;
@@ -334,12 +354,16 @@ sub main {
                 dprint( "Got old value of \'$value\' for $field" ) ;
 
                 if ( defined( $defaults{ $field } )) {
-                    dprint( "Replacing default value for \'$field\' with old value of \'$value\'" ) ;
+                    my $msg = "Replacing default value for \'$field\' with " .
+                              "old value of \'$value\'" ;
+                    dprint( $msg ) ;
                     $defaults{ $field } = $value ;
 
                     if ( defined( $options{ $field } )) {
                         $value = $options{ $field } ;
-                        dprint( "Now Replacing default value for \'$field\' with \'$value\'from options" ) ;
+                        my $msg = "Now Replacing default value for " .
+                                  "\'$field\' with \'$value\'from options" ;
+                        dprint( $msg ) ;
                         $defaults{ $field } = $value ;
                     }
                 }
@@ -371,13 +395,15 @@ sub main {
         my $caller_id = $new_values{ 'callerid' } ;
 
         $url =  $base_url . "&method=${method}" .
-                "&note=${note}&routing=${routing}&callerid=${caller_id}&did=${did}" ;
+                "&note=${note}&routing=${routing}" .
+                "&callerid=${caller_id}&did=${did}" ;
 
         # note that it's 'filter' and not 'filtering'.  sheesh...
         $url .= "&filter=${filtering_id}" if ( $filtering_id ne "" ) ;
     } else {
         # can't happen...
-        print STDERR "${G_progname}: Unclear what operation is being attempted\n" ;
+        my $err = "Unclear what operation is being attempted" ;
+        print STDERR "${G_progname}: $err\n" ;
         return(1) ;
     }
 
@@ -388,7 +414,8 @@ sub main {
     my $ret = send_request( $url, \@errors, \$json_ref ) ;
     if ( $ret ) {
         if ( @errors == 0 ) {
-            print STDERR "${G_progname}: Arg 2 to send_request() must be bad\n" ;
+            my $err = "Arg 2 to send_request() must be bad" ;
+            print STDERR "${G_progname}: $err\n" ;
             return(1) ;
         }
         foreach my $error ( @errors ) {
@@ -404,7 +431,8 @@ sub main {
     if (( $print_flag == 0 ) and ( $delete_flag == 0 )) {
         # setting a filter rule
         if ( not defined( $filtering )) {
-            print STDERR "$G_progname: Could not get filtering ID from returned JSON data\n" ;
+            my $err = "Could not get filtering ID from returned JSON data" ;
+            print STDERR "$G_progname: $err\n" ;
             return(1) ;
         }
         dprint( "filtering ID number = $filtering" ) ;
@@ -482,11 +510,13 @@ sub send_request {
         return(1) ;
     }
     if (( not defined( $url )) or ( $url eq "" )) {
-        push( @{$error_ref},  "${i_am}: (Arg 1) URL is undefined or empty string" ) ;
+        my $msg = "${i_am}: (Arg 1) URL is undefined or empty string" ;
+        push( @{$error_ref}, $msg ) ;
         return(1) ;
     }
     if (( ref( $json_ref ) eq "" ) or ( ref( $json_ref ) ne "SCALAR" )) {
-        push( @{$error_ref},  "${i_am}: Arg 3 is not a SCALAR reference to return data" ) ;
+        my $err = "${i_am}: Arg 3 is not a SCALAR reference to return data" ;
+        push( @{$error_ref},  $err ) ;
         return(1) ;
     }
 
@@ -506,7 +536,8 @@ sub send_request {
 
     my $retcode = $curl->perform() ;
     if ( $retcode ) {
-        push( @{$error_ref},  "${i_am}: " . $curl->strerror($retcode) . " ($retcode)" ) ;
+        my $msg = "${i_am}: " . $curl->strerror($retcode) . " ($retcode)" ;
+        push( @{$error_ref}, $msg ) ;
         push( @{$error_ref}, "${i_am}: errbuf: " . $curl->errbuf . "\n" ) ;
         return(1) ;
     }
@@ -532,16 +563,54 @@ sub send_request {
 # debug print
 #
 # Arguments:
-#   1:  message
+#     1:  message
 # Returns:
-#   0
+#     0
 # Globals:
-#   $G_debug
+#     $G_debug
 
 sub dprint {
     my $msg = shift ;
     return(0) if ( $G_debug == 0 ) ;
 
-    print "$msg\n" ;
+    print "debug: $msg\n" ;
     return(0) ;
+}
+
+
+# find the config file we really want and that exists
+# accept the *last* existing one in the order of:
+#   $ENV{ HOME }/.voip-ms.conf
+#   $ENV{ VOIP_MS_CONFIG_FILE }
+#   given by opition -c or --config
+#
+# Arguments:
+#     1:  value given with option to program
+# Returns:
+#     config-file (which could be undef)
+# Globals:
+#     none
+
+sub find_config_file {
+    my $config_option = shift ;
+
+    my @configs = () ;
+    my $final_config = undef ;
+
+    # first the HOME directory
+    my $home = $ENV{ HOME } ;
+    push( @configs, "${home}/.voip-ms.conf" ) ;
+
+    # next an environment variable
+    my $c = $ENV{ 'VOIP_MS_CONFIG_FILE' } ;
+    push( @configs, $c ) if ( defined( $c )) ;
+
+    # finally if an over-riding option was given
+    push( @configs, $config_option ) if defined( $config_option ) ;
+
+    # accept the last one found that exists
+    foreach my $c ( @configs ) {
+        $final_config = $c if ( -f $c ) ;
+    }
+    return( $final_config ) ;
 }

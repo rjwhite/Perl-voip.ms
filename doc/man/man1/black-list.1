@@ -126,6 +126,12 @@ rules with no options, it will complain instead.  So, just set a default in the 
 The 'routing' keyword is optional.  The default in the program is 'sys:noservice'.
 .PP
 The 'note' keyword is optional.  The default in the program is 'Added by black-list program'.
+.SH ENVIRONMENT VARIABLES
+VOIP_MS_CONFIG_FILE
+.br
+If the environment variable VOIP_MS_CONFIG_FILE is set, and if the file exists, it will
+be used instead of the default ${HOME}/.voip-ms.conf - unless it is over-ridden by the
+config file options -c or --config
 .SH SEE ALSO
 get-cdrs(1)
 .br
