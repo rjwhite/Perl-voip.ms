@@ -3,9 +3,7 @@
 # black-list a phone number with the voip.ms service
 # Uses a config file for authentication and defaults
 
-# Needs WWW::Curl from CPAN.
-# That will complain that you must install curl-config, which you can do 
-# on a Linix Mint system with: 'apt-get install libcurl4-gnutls-dev'
+# Needs LWP::UserAgent from CPAN
 
 # Needs Moxad::Config found on github.com under user rjwhite
 #   https://github.com/rjwhite/Perl-config-module
@@ -35,13 +33,13 @@ use strict ;
 use warnings ;
 use lib "/usr/local/Moxad/lib" ;
 use Moxad::Config ;
-use WWW::Curl::Easy ;
+use LWP::UserAgent();
 use URI::Escape ;
 use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.9" ;
+my $G_version    = "v0.10" ;
 my $G_debug      = 0 ;
 
 my $C_ROUTING_NO_SERVICE   = "noservice" ;
@@ -522,29 +520,34 @@ sub send_request {
 
     dprint( "${i_am}: URL = \'$url\'" ) ;
 
-    my $curl = WWW::Curl::Easy->new();
-    if ( ! $curl ) {
-        push( @{$error_ref}, "${i_am}: WWW::Curl::Easy->new() failed" ) ;
+    my $ua = LWP::UserAgent->new( timeout => 10 );
+
+    # you need to look like a browser to get past Cloudflare
+    $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
+    $ua->cookie_jar( {} ) ;     # maybe needed by Cloudflare in future?
+    $ua->env_proxy;
+    my $response = $ua->get( $url ) ;
+
+    my $response_body;
+    if ( $response->is_success ) {
+        $response_body = $response->decoded_content ;
+    } else {
+        my $reason = $response->status_line ;
+        push( @{$error_ref},  "${i_am}: $reason" ) ;
         return(1) ;
     }
 
-    $curl->setopt( CURLOPT_HEADER, 0 );
-    $curl->setopt( CURLOPT_URL, $url ) ;
+    # decode the JSON
 
-    my $response_body;
-    $curl->setopt( CURLOPT_WRITEDATA, \$response_body) ;
-
-    my $retcode = $curl->perform() ;
-    if ( $retcode ) {
-        my $msg = "${i_am}: " . $curl->strerror($retcode) . " ($retcode)" ;
-        push( @{$error_ref}, $msg ) ;
-        push( @{$error_ref}, "${i_am}: errbuf: " . $curl->errbuf . "\n" ) ;
+    if ( $response_body !~ /^\{/ ) {
+        push( @{$error_ref},  "${i_am}: No JSON structure returned" ) ;
         return(1) ;
     }
 
     my $json = decode_json( $response_body ) ;
 
     my $status = $json->{ 'status' } ;
+
     dprint( "status = $status" ) ;
     if ( $status ne "success" ) {
         my $reason = $status ;

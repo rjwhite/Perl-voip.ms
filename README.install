@@ -17,7 +17,7 @@ laptop when logged in, and then VOIP_MS_CONFIG_FILE points to an existing
 config file that the programs will use.
 
 It is ok for VOIP_MS_CONFIG_FILE to point to a non-existent file (when your
-Veracrypt valid is NOT mounted - because these programs will only try to
+Veracrypt vault is NOT mounted - because these programs will only try to
 use a config file that it finds.  It will use the *last* existing config 
 file that is found, that are checked in order of:
     $HOME/.voip-ms.conf

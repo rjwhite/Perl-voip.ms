@@ -7,9 +7,7 @@
 #   get-did-info.plx --account  - print list (sub)account:DID-number
 #   get-did-info.plx --all      - print all data available about the DID(s)
 
-# Needs WWW::Curl from CPAN.
-# That will complain that you must install curl-config, which you can do 
-# on a Linix Mint system with: 'apt-get install libcurl4-gnutls-dev'
+# Needs LWP::UserAgent from CPAN
 
 # Needs Moxad::Config found on github.com under user rjwhite
 
@@ -30,14 +28,14 @@
 
 use strict ;
 use warnings ;
+use LWP::UserAgent() ;
 use lib "/usr/local/Moxad/lib" ;
 use Moxad::Config ;
-use WWW::Curl::Easy ;
 use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.9" ;
+my $G_version    = "v0.10" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -176,12 +174,6 @@ sub main {
     dprint( "user     = $user" ) ;
     dprint( "method   = $method" ) ;
 
-    my $curl = WWW::Curl::Easy->new();
-    if ( ! $curl ) {
-        print STDERR "WWW::Curl::Easy->new() failed\n" ;
-        return(1) ;
-    }
-
     # finally...  build the URL we need
 
     my $url = "https://voip.ms/api/v1/rest.php" .
@@ -192,20 +184,29 @@ sub main {
 
     dprint( "URL = \'$url\'" ) ;
 
-    $curl->setopt( CURLOPT_HEADER, 0 );
-    $curl->setopt( CURLOPT_URL, $url ) ;
+    my $ua = LWP::UserAgent->new( timeout => 10 );
+
+    # you need to look like a browser to get past Cloudflare
+    $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
+    $ua->cookie_jar( {} ) ;     # maybe needed by Cloudflare in future?
+    $ua->env_proxy;
+    my $response = $ua->get( $url ) ;
 
     my $response_body;
-    $curl->setopt( CURLOPT_WRITEDATA, \$response_body) ;
-
-    my $retcode = $curl->perform() ;
-    if ( $retcode ) {
-        my $err = $curl->strerror($retcode) . ", ($retcode)" ;
-        print STDERR "$G_progname: $err\n" ;
-        print STDERR "$G_progname: errbuf: ", $curl->errbuf . "\n" ;
+    if ( $response->is_success ) {
+        $response_body = $response->decoded_content ;
+    } else {
+        my $reason = $response->status_line ;
+        print STDERR "$G_progname: $reason\n" ;
         return(1) ;
     }
 
+    # decode the JSON
+
+    if ( $response_body !~ /^\{/ ) {
+        print STDERR "$G_progname: No JSON structure returned\n" ;
+        return(1) ;
+    }
     my $json = decode_json( $response_body ) ;
 
     my $status = $json->{ 'status' } ;

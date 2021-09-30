@@ -3,9 +3,7 @@
 # send a SMS message
 # Uses a config file for authentication and defaults
 
-# Needs WWW::Curl from CPAN.
-# That will complain that you must install curl-config, which you can do 
-# on a Linix Mint system with: 'apt-get install libcurl4-gnutls-dev'
+# Needs LWP::UserAgent from CPAN
 
 # Needs Moxad::Config found on github.com under user rjwhite
 #   https://github.com/rjwhite/Perl-config-module
@@ -31,14 +29,14 @@
 use strict ;
 use warnings ;
 use lib "/usr/local/Moxad/lib" ;
+use LWP::UserAgent() ;
 use Moxad::Config ;
-use WWW::Curl::Easy ;
 use URI::Escape ;
 use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.9" ;
+my $G_version    = "v0.10" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -58,6 +56,7 @@ sub main {
     my $error       = "" ;
 
     my $help_flag    = 0 ;
+    my $show_aliases_flag = 0 ;
     my $no_send_flag = 0 ;
 
     my %defaults = (
@@ -77,6 +76,8 @@ sub main {
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
             print "version: $G_version\n" ;
             return(0) ;
+        } elsif (( $arg eq "-s" ) or ( $arg eq "--show-aliases" )) {
+            $show_aliases_flag++ ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
         } elsif (( $arg eq "-n" ) or ( $arg eq "--no-send" )) {
@@ -163,7 +164,7 @@ sub main {
     # now that the dust has settled with defaults, config values and options...
     if ( $help_flag ) {
         printf "usage: %s [option]* -r recipient message-to-send\n" .
-            "%s %s %s %s %s %s %s",
+            "%s %s %s %s %s %s %s %s",
             $G_progname,
             "\t[-c|--config file]   (config-file. default=$config_file)\n",
             "\t[-d|--debug]         (debugging output)\n",
@@ -172,9 +173,33 @@ sub main {
             "\t[-h|--help]          (help)\n",
             "\t[-l|--line]          sender DID-phone-number " .
                 "(default=$values{ 'did' })\n", 
+            "\t[-s|--show-aliases]  (show any aliases set in config file)\n",
             "\t[-V|--version]       (print version)\n",
             "\t-r|--recipient phone-number\n" ;
 
+        return(0) ;
+    }
+
+    # see if user wants to see any aliases set up in config file
+    if ( $show_aliases_flag ) {
+        if ( defined( $values{ 'aliases' } )) {
+            my %aliases = %{$values{ 'aliases' }} ;
+
+            # first get maximum length of aliases
+
+            my $max_len = 0 ;
+            foreach my $alias ( keys( %aliases )) {
+                my $len = length( $alias ) ;
+                $max_len = $len if ( $len > $max_len ) ;
+            }
+            $max_len += 4 ;     # add some spacing
+
+            foreach my $key( keys( %aliases )) {
+                my $value = $aliases{ $key } ;
+                my $alias = "${key}:" ;
+                printf( "%-${max_len}s %s\n", $alias, $value ) ;
+            }
+        }
         return(0) ;
     }
 
@@ -328,26 +353,29 @@ sub send_request {
 
     dprint( "${i_am}: URL = \'$url\'" ) ;
 
-    my $curl = WWW::Curl::Easy->new();
-    if ( ! $curl ) {
-        push( @{$error_ref}, "${i_am}: WWW::Curl::Easy->new() failed" ) ;
-        return(1) ;
-    }
+    my $ua = LWP::UserAgent->new( timeout => 10 );
 
-    $curl->setopt( CURLOPT_HEADER, 0 );
-    $curl->setopt( CURLOPT_URL, $url ) ;
+    # you need to look like a browser to get past Cloudflare
+    $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
+    $ua->cookie_jar( {} ) ;     # maybe needed by Cloudflare in future?
+    $ua->env_proxy;
+    my $response = $ua->get( $url ) ;
 
     my $response_body;
-    $curl->setopt( CURLOPT_WRITEDATA, \$response_body) ;
-
-    my $retcode = $curl->perform() ;
-    if ( $retcode ) {
-        my $err = $curl->strerror($retcode) . ", ($retcode)" ;
-        print STDERR "$G_progname: $err\n" ;
-        print STDERR "$G_progname: errbuf: ", $curl->errbuf . "\n" ;
+    if ( $response->is_success ) {
+        $response_body = $response->decoded_content ;
+    } else {
+        my $reason = $response->status_line ;
+        push( @{$error_ref},  "${i_am}: $reason" ) ;
         return(1) ;
     }
 
+    # decode the JSON
+
+    if ( $response_body !~ /^\{/ ) {
+        push( @{$error_ref},  "${i_am}: No JSON structure returned" ) ;
+        return(1) ;
+    }
     my $json = decode_json( $response_body ) ;
 
     my $status = $json->{ 'status' } ;

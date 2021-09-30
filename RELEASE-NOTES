@@ -89,10 +89,10 @@
         - Makefile
             - created 'man' target
             - updated 'install' target
-            - now distiguishes between a root install and an ordinary user.
+            - now distinguishes between a root install and an ordinary user.
               checks if root or not.
         - black-list.plx:
-            - can now specify a single specfic entry to print with -f option
+            - can now specify a single specific entry to print with -f option
             - now preserves old exiting values if a change is being made to only
               1 or 2 items (routing, note, did, etc)
             - total overhaul.  refactoring
@@ -147,10 +147,10 @@
                     given by option -c/--config
               The intention is that if you have your config, which has
               authentication info, in a mountable encrypted vault, that
-              the commands are only useable when you have mounted that
+              the commands are only usable when you have mounted that
               decrypted vault, say on a laptop, but if your laptop gets
               stolen, that voip.ms authentication info is safely encrypted.
-              You can best iumplement that by using the environment
+              You can best implement that by using the environment
               variable VOIP_MS_CONFIG_FILE instead of having to supply
               the option -c/--config each time
         - get-cdrs.plx, get-did-info.plx:
@@ -159,3 +159,20 @@
         - doc/man/man1/black-list.1, doc/man/man1/get-cdrs.1,
           doc/man/man1/get-did-info.1, doc/man/man1/send-sms-message.1:
             - add ENVIRONMENT VARIABLES section
+
+0.10    Sep 30, 2021
+        - RELEASE-NOTES:
+        - README.install:
+            - fixed some typos
+        - REQUIREMENTS:
+            - updated to show LWP::UserAgent and removed all the
+              Curl related requirements.
+        *.plx:
+            - switched from using WWW::Curl to LWP::UserAgent.
+              this was brought about because of a recent large DDoS
+              attack on Voip.ms and they started using Cloudflare to
+              block access. This also simplifies other non-CPAN curl
+              related dependencies.
+        send-sms-message.plx:
+            - added a -s/--show-aliases option to show any aliases 
+              set up in the config file
