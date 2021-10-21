@@ -35,10 +35,12 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.10" ;
+my $G_version    = "v0.11" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
+
+my $C_DEFAULT_TIMEOUT = 30  ;
 
 if ( main() ) {
     exit(1) ;
@@ -75,7 +77,8 @@ sub main {
         } elsif (( $arg eq "-D" ) or ( $arg eq "--did" )) {
             $did = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
-            print "version: $G_version\n" ;
+            print "Program version: $G_version\n" ;
+            print "Config module version: $Moxad::Config::VERSION\n" ;
             return(0) ;
         } elsif ( $arg =~ /^\-/ ) {
             print STDERR "$G_progname: unknown option: $arg\n" ;
@@ -106,7 +109,11 @@ sub main {
 
     # read in config data
 
-    Moxad::Config->set_debug( 0 ) ;
+    # show config debug if -d/--debug flag used more than once
+    my $config_debug = 0 ;
+    $config_debug = 1 if ( $G_debug > 1 ) ;
+
+    Moxad::Config->set_debug( $config_debug ) ;
     my $cfg1 = Moxad::Config->new(
         $config_file, "",
         { 'AcceptUndefinedKeywords' => 'no' } ) ;
@@ -171,6 +178,18 @@ sub main {
     my $user   = $auth_values{ 'user' } ;
     my $pass   = $auth_values{ 'pass' } ;
 
+    my $timeout = $cfg1->get_values( 'info', 'timeout' ) ;
+    if ( not defined( $timeout )) {
+        dprint( "Using default timeout of $C_DEFAULT_TIMEOUT seconds" ) ;
+        $timeout = $C_DEFAULT_TIMEOUT ;
+    } else {
+        if ( $timeout !~ /^\d+$/ ) {
+            print STDERR "$G_progname: timeout ($timeout) is non-numeric\n" ;
+            return(1) ;
+        }
+        dprint( "Using timeout found in config file of $timeout seconds" ) ;
+    }
+
     dprint( "user     = $user" ) ;
     dprint( "method   = $method" ) ;
 
@@ -184,7 +203,7 @@ sub main {
 
     dprint( "URL = \'$url\'" ) ;
 
-    my $ua = LWP::UserAgent->new( timeout => 10 );
+    my $ua = LWP::UserAgent->new( timeout => $timeout );
 
     # you need to look like a browser to get past Cloudflare
     $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;

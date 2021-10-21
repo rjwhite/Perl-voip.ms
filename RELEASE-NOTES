@@ -176,3 +176,23 @@
         send-sms-message.plx:
             - added a -s/--show-aliases option to show any aliases 
               set up in the config file
+
+0.11    Oct 21, 2021
+        *.plx:
+            - if -d/--debug option used more than once, then debugging
+              also displayed for config file handling
+            - shows the config module version with -V/--version
+            - if there is a 'timeout' set in the appropriate section of
+              the config file, it will over-ride the default.
+            - the default hard-coded timeout has increased from 10 seconds
+              to 30 secs ($C_DEFAULT_TIMEOUT)
+        send-sms-message.plx:
+            - added -t/--timeout option that will override a timeout value
+              found in the config, which will over-ride the hard-coded default
+        .voip-ms.conf:
+            - added optional 'timeout' into 'sms', cdrs' and 'black-list' 
+              sections
+            - added optional section 'info' for get-did-info.plx and a
+              timeout in it.
+        doc/man/man1/send-sms-message.1:
+            - added -t/--timeout option

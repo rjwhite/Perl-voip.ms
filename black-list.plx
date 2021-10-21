@@ -39,13 +39,15 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.10" ;
+my $G_version    = "v0.11" ;
 my $G_debug      = 0 ;
 
 my $C_ROUTING_NO_SERVICE   = "noservice" ;
 my $C_ROUTING_BUSY         = "busy" ;
 my $C_ROUTING_HANG_UP      = "hangup" ;
 my $C_ROUTING_DISCONNECTED = "disconnected" ;
+
+my $C_DEFAULT_TIMEOUT = 30  ;
 
 $G_progname     =~ s/^.*\/// ;
 
@@ -82,6 +84,7 @@ sub main {
         'routing'   => $routing_default,
         'did'       => "unknown",
         'callerid'  => "unknown",
+        'timeout'   => $C_DEFAULT_TIMEOUT,
     ) ;
     my %new_values = () ;
     my %options    = () ;
@@ -93,7 +96,8 @@ sub main {
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
             $help_flag++ ;
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
-            print "version: $G_version\n" ;
+            print "Program version: $G_version\n" ;
+            print "Config module version: $Moxad::Config::VERSION\n" ;
             return(0) ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
@@ -188,7 +192,11 @@ sub main {
 
     # read in config data
 
-    Moxad::Config->set_debug( 0 ) ;
+    # show config debug if -d/--debug flag used more than once
+    my $config_debug = 0 ;
+    $config_debug = 1 if ( $G_debug > 1 ) ;
+
+    Moxad::Config->set_debug( $config_debug ) ;
     my $cfg1 = Moxad::Config->new(
         $config_file, "",
         { 'AcceptUndefinedKeywords' => 'no' } ) ;
@@ -226,6 +234,7 @@ sub main {
     foreach my $keyword ( @keywords ) {
         my $value = $cfg1->get_values( 'black-list', $keyword ) ;
         $defaults{ $keyword } = $value ;
+        dprint( "setting \'$keyword\' to $value from config file" ) ;
     }
 
     # we defer printing out the help info till after we have set defaults
@@ -309,7 +318,7 @@ sub main {
                 # options given over-ride these defaults
                 if ( defined( $options{ $field } )) {
                     my $value = $options{ $field } ;
-                    my $msg = "Overriding default with opition for $field " .
+                    my $msg = "Overriding default with option for $field " .
                                "with $value" ;
                     dprint( $msg ) ;
                     $new_values{ $field } = $value ;
@@ -323,7 +332,9 @@ sub main {
             my @errors = () ;
             $url =  $base_url .
                     "&method=getCallerIDFiltering&filtering=$filtering_id" ;
-            my $ret = send_request( $url, \@errors, \$old_values_ref ) ;
+
+            my $ret = send_request( $url, \@errors, \$old_values_ref,
+                                    $defaults{ 'timeout' } ) ;
             if ( $ret ) {
                 if ( @errors == 0 ) {
                     my $err = "Arg 2 to send_request() must be bad" ;
@@ -409,7 +420,8 @@ sub main {
 
     my @errors = () ;
     my $json_ref ;
-    my $ret = send_request( $url, \@errors, \$json_ref ) ;
+    my $ret = send_request( $url, \@errors, \$json_ref, 
+                            $defaults{ 'timeout' } ) ;
     if ( $ret ) {
         if ( @errors == 0 ) {
             my $err = "Arg 2 to send_request() must be bad" ;
@@ -490,6 +502,7 @@ sub main {
 #   1:  URL
 #   2:  reference to array of errors to return
 #   3:  reference of JSON data to return
+#   4:  timeout - defaults to $C_DEFAULT_TIMEOUT secs
 # Returns:
 #   0:  ok
 #   1:  error
@@ -500,6 +513,7 @@ sub send_request {
     my $url       = shift ;
     my $error_ref = shift ;
     my $json_ref  = shift ;
+    my $timeout   = shift ;
 
     my $i_am = "send_request()" ;
 
@@ -518,9 +532,20 @@ sub send_request {
         return(1) ;
     }
 
-    dprint( "${i_am}: URL = \'$url\'" ) ;
+    if (( not defined( $timeout )) or ( $timeout eq "" )) {
+        $timeout = $C_DEFAULT_TIMEOUT ;
+    }
 
-    my $ua = LWP::UserAgent->new( timeout => 10 );
+    if ( $timeout !~ /^\d+$/ ) {
+        my $err = "${i_am}: timeout ($timeout) is non-numeric" ;
+        push( @{$error_ref}, $err ) ;
+        return(1) ;
+    }
+
+    dprint( "${i_am}: URL = \'$url\'" ) ;
+    dprint( "${i_am}: using timeout = \'$timeout\'" ) ;
+
+    my $ua = LWP::UserAgent->new( timeout => $timeout );
 
     # you need to look like a browser to get past Cloudflare
     $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;

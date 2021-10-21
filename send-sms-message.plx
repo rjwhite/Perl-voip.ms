@@ -36,8 +36,10 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.10" ;
+my $G_version    = "v0.11" ;
 my $G_debug      = 0 ;
+
+my $C_DEFAULT_TIMEOUT = 30  ;
 
 $G_progname     =~ s/^.*\/// ;
 
@@ -56,12 +58,13 @@ sub main {
     my $error       = "" ;
 
     my $help_flag    = 0 ;
-    my $show_aliases_flag = 0 ;
     my $no_send_flag = 0 ;
+    my $show_aliases_flag = 0 ;
 
     my %defaults = (
         'did'       => undef,
         'recipient' => undef,
+        'timeout'   => $C_DEFAULT_TIMEOUT,
     ) ;
 
     my $message = "" ;
@@ -74,8 +77,11 @@ sub main {
         if (( $arg eq "-h" ) or ( $arg eq "--help" )) {
             $help_flag++ ;
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
-            print "version: $G_version\n" ;
+            print "Program version: $G_version\n" ;
+            print "Config module version: $Moxad::Config::VERSION\n" ;
             return(0) ;
+        } elsif (( $arg eq "-t" ) or ( $arg eq "--timeout" )) {
+            $options{ 'timeout' } = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-s" ) or ( $arg eq "--show-aliases" )) {
             $show_aliases_flag++ ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
@@ -107,7 +113,11 @@ sub main {
 
     # read in config data
 
-    Moxad::Config->set_debug( 0 ) ;
+    # show config debug if -d/--debug flag used more than once
+    my $config_debug = 0 ;
+    $config_debug = 1 if ( $G_debug > 1 ) ;
+
+    Moxad::Config->set_debug( $config_debug ) ;
     my $cfg1 = Moxad::Config->new(
         $config_file, "",
         { 'AcceptUndefinedKeywords' => 'no' } ) ;
@@ -164,7 +174,7 @@ sub main {
     # now that the dust has settled with defaults, config values and options...
     if ( $help_flag ) {
         printf "usage: %s [option]* -r recipient message-to-send\n" .
-            "%s %s %s %s %s %s %s %s",
+            "%s %s %s %s %s %s %s %s %s",
             $G_progname,
             "\t[-c|--config file]   (config-file. default=$config_file)\n",
             "\t[-d|--debug]         (debugging output)\n",
@@ -174,6 +184,7 @@ sub main {
             "\t[-l|--line]          sender DID-phone-number " .
                 "(default=$values{ 'did' })\n", 
             "\t[-s|--show-aliases]  (show any aliases set in config file)\n",
+            "\t[-t|--timeout num]   (default=$values{ 'timeout' })\n",
             "\t[-V|--version]       (print version)\n",
             "\t-r|--recipient phone-number\n" ;
 
@@ -300,7 +311,7 @@ sub main {
 
     my @errors = () ;
     my $json_ref ;
-    my $ret = send_request( $url, \@errors, \$json_ref ) ;
+    my $ret = send_request( $url, \@errors, \$json_ref, $values{ 'timeout' } ) ;
     if ( $ret ) {
         if ( @errors == 0 ) {
             my $err = "Arg 2 to send_request() must be bad" ;
@@ -323,6 +334,7 @@ sub main {
 #   1:  URL
 #   2:  reference to array of errors to return
 #   3:  reference of JSON data to return
+#   4:  timeout
 # Returns:
 #   0:  ok
 #   1:  error
@@ -333,6 +345,7 @@ sub send_request {
     my $url       = shift ;
     my $error_ref = shift ;
     my $json_ref  = shift ;
+    my $timeout   = shift ;
 
     my $i_am = "send_request()" ;
 
@@ -350,10 +363,20 @@ sub send_request {
         push( @{$error_ref}, $err ) ;
         return(1) ;
     }
+    if (( not defined( $timeout )) or ( $timeout eq "" )) {
+        $timeout = $C_DEFAULT_TIMEOUT ;
+    }
+
+    if ( $timeout !~ /^\d+$/ ) {
+        my $err = "${i_am}: timeout ($timeout) is non-numeric" ;
+        push( @{$error_ref}, $err ) ;
+        return(1) ;
+    }
 
     dprint( "${i_am}: URL = \'$url\'" ) ;
+    dprint( "${i_am}: TIMEOUT = \'$timeout\'" ) ;
 
-    my $ua = LWP::UserAgent->new( timeout => 10 );
+    my $ua = LWP::UserAgent->new( timeout => $timeout );
 
     # you need to look like a browser to get past Cloudflare
     $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
