@@ -30,7 +30,8 @@ use the given (sub)account-name instead of the main account and all sub-accounts
 use the given config file instead of the default ~/.voip-ms.conf
 .TP
 \fB\-d|--debug\fR
-print debugging messages
+print debugging messages.  If the -d/--debug option is used more than once,
+then debugging is also displayed for config file handling
 .TP
 \fB\-f|--from\fR YYYY-MM-DD
 use the given date as the FROM date.
@@ -169,6 +170,7 @@ then they are wanted.  There are 4 different classes of CDRs:  answered, noanswe
 .SH ENVIRONMENT VARIABLES
 VOIP_MS_CONFIG_FILE
 .br
+.sp
 If the environment variable VOIP_MS_CONFIG_FILE is set, and if the file exists, it will
 be used instead of the default ${HOME}/.voip-ms.conf - unless it is over-ridden by the
 config file options -c or --config
@@ -178,9 +180,11 @@ black-list(1)
 get-did-info(1)
 .br
 send-sms-message(1)
+.br
+phone-recording(1)
 .SH AUTHOR
 RJ White
 .br
-rj@moxad.com
+rj.white@moxad.com
 .br
 Moxad Enterprises Inc.

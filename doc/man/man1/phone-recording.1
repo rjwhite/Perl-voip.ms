@@ -1,0 +1,99 @@
+.TH phone-recording 1
+.SH NAME
+phone-recording \- turn recording on or off, or check value for a phone number
+.SH SYNOPSIS
+.B phone-recording
+[
+.B \-dhqV
+]
+[
+.B \-c config-file
+]
+[
+.B \-p phone-number
+]
+.B on|off|check
+.SH OPTIONS
+.TP
+\fB\-c|--config\fR config-file
+use the given config file instead of the default ~/.voip-ms.conf
+.TP
+\fB\-d|--debug\fR
+print debugging messages.  If the -d/--debug option is used more than once,
+then debugging is also displayed for config file handling
+.TP
+\fB\-h|--help\fR
+print usage and exit.
+.TP
+\fB\-p|--phone\fR phone-number
+phone-number to turn recording on or off, or to check current value
+.TP
+\fB\-q|--quiet\fR
+Turn off status messages.  Only print error messages
+.TP
+\fB\-V|--version\fR
+print the version number of the program.
+.SH EXAMPLES
+.TP
+% phone-recording on     # phone number found in config-file
+Set 'record_calls' to 1 for phone number 555-666-7777
+.TP
+% phone-recording --phone 555-123-4567 check
+555-123-4567 currently has 'record_calls' set to '1' (on)
+.SH DESCRIPTION
+.I phone-recording
+turns recording on or off for a phone number, or checks the current value,
+from a number belonging to the user at Voip.ms.
+The default phone number belonging to the user is found in the
+config file .voip-ms.conf in the HOME directory.  The phone number used can be changed
+with the -p or --phone option.
+The phone number can have dashes in it to make it more human readable.
+.PP
+To use this program, the user will have to set up access for the IP number 
+running this program from.
+Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH CONFIG FILE
+The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
+is used for several programs that use the voip.ms API.
+The config file is shared, mainly so there is a single centralized location for
+authentication data for access to the API.
+.PP
+The required sections in the config file for the \fIphone-recording\fP program are:
+.PP
+.RS 5n
+.TP
+.B authentication:
+    user       = me@foo.bar
+.br
+    pass       = GabbaGabba
+.TP
+.B record:
+.nf
+    did        = 519-555-1212
+.fi
+.RE
+.PP
+The 'record' section with its 'did' keyword is optional, but if it is
+not found in the config file, then the -p or --phone option will need to be
+provided with each usage.
+.SH ENVIRONMENT VARIABLES
+VOIP_MS_CONFIG_FILE
+.br
+.sp
+If the environment variable VOIP_MS_CONFIG_FILE is set, and if the file exists, it will
+be used instead of the default ${HOME}/.voip-ms.conf - unless it is over-ridden by the
+config file options -c or --config
+.SH SEE ALSO
+get-cdrs(1)
+.br
+get-did-info(1)
+.br
+black-list(1)
+.br
+send-sms-message(1)
+.SH AUTHOR
+RJ White
+.br
+rj.white@moxad.com
+.br
+Moxad Enterprises Inc.

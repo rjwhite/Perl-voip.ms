@@ -196,3 +196,23 @@
               timeout in it.
         doc/man/man1/send-sms-message.1:
             - added -t/--timeout option
+
+0.2     Dec 24, 2022
+        phone-recording.plx:
+            - created
+        .voip-ms.conf:
+            - added 'record' section for phone-recording
+            - added some additional comments for other sections
+        doc/man/man1/phone-recording.1:
+            - created
+        doc/man/man1/send-sms-message.1:
+            - added -s|--show-aliases option
+        doc/man/man1/{black-list.1,get-cdrs.1,get-did-info.1,send-sms-message.1}:
+            - changed my e-mail from rj@moxad.com to rj.white@moxad.com
+            - added phone-recording.1 in SEE ALSO
+            - updated debug option info for more than 1 usage
+            - added space after VOIP_MS_CONFIG_FILE in ENVIRONMENT VARIABLES
+        Makefile:
+            - added phone-recording script to install
+            - changed the 'install' target to now include 'man' pages as well as
+              the programs (now with a target of 'bin').

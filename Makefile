@@ -7,7 +7,9 @@ SYS_DEST_DIR	= /usr/local/bin
 USER_DEST_DIR	= ${HOME}/bin
 MODE			= 755
 
-install:
+install: bin man
+
+bin:
 	@if [ `whoami` = 'root' ]; then \
 		echo "I am Groot!" ; \
 		echo "Installing scripts into ${SYS_DEST_DIR}" ; \
@@ -18,6 +20,7 @@ install:
 		install -p -m ${MODE} black-list.plx ${SYS_DEST_DIR}/black-list ;\
 		install -p -m ${MODE} get-did-info.plx ${SYS_DEST_DIR}/get-did-info ;\
 		install -p -m ${MODE} send-sms-message.plx ${SYS_DEST_DIR}/send-sms-message ;\
+		install -p -m ${MODE} phone-recording.plx ${SYS_DEST_DIR}/phone-recording ;\
 		install -p -m ${MODE} write-phone-CDR-records.sh ${SYS_DEST_DIR}/write-phone-CDR-records ;\
 	else \
 		echo "I am NOT Groot!" ; \
@@ -29,6 +32,7 @@ install:
 		install -p -m ${MODE} black-list.plx ${USER_DEST_DIR}/black-list ;\
 		install -p -m ${MODE} get-did-info.plx ${USER_DEST_DIR}/get-did-info ;\
 		install -p -m ${MODE} send-sms-message.plx ${USER_DEST_DIR}/send-sms-message ;\
+		install -p -m ${MODE} phone-recording.plx ${USER_DEST_DIR}/phone-recording ;\
 		install -p -m ${MODE} write-phone-CDR-records.sh ${USER_DEST_DIR}/write-phone-CDR-records ;\
 	fi
 

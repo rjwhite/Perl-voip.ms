@@ -12,7 +12,8 @@ message-to-send
 use the given config file instead of the default ~/.voip-ms.conf
 .TP
 \fB\-d|--debug\fR
-print debugging messages
+print debugging messages.  If the -d/--debug option is used more than once,
+then debugging is also displayed for config file handling
 .TP
 \fB\-h|--help\fR
 print usage and exit.
@@ -26,6 +27,9 @@ don't send the message, but show the URL to send to the API
 .TP
 \fB\-r|--recipient\fR phone-number
 The phone number to send the message to.
+.TP
+\fB\-s|--show-aliases\fR
+Show any aliases set in the config file
 .TP
 \fB\-t|--timeout\fR number
 The timeout used when sending the message
@@ -89,6 +93,7 @@ the --line option will need to be provided with each usage.
 .SH ENVIRONMENT VARIABLES
 VOIP_MS_CONFIG_FILE
 .br
+.sp
 If the environment variable VOIP_MS_CONFIG_FILE is set, and if the file exists, it will
 be used instead of the default ${HOME}/.voip-ms.conf - unless it is over-ridden by the
 config file options -c or --config
@@ -97,10 +102,12 @@ get-cdrs(1)
 .br
 get-did-info(1)
 .br
-black-list.1
+black-list(1)
+.br
+phone-recording(1)
 .SH AUTHOR
 RJ White
 .br
-rj@moxad.com
+rj.white@moxad.com
 .br
 Moxad Enterprises Inc.
