@@ -216,3 +216,8 @@
             - added phone-recording script to install
             - changed the 'install' target to now include 'man' pages as well as
               the programs (now with a target of 'bin').
+
+0.2.1   Dec 30, 2022:
+        README.md:
+            - added section showing what programs are included
+            - inproved formatting

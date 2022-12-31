@@ -8,6 +8,13 @@ file that needs to have the userid and password changed, and the file installed
 into your HOME directory.  You can tweak the config file to set which fields 
 you are interested in, the order and size of the fields, and the titles.
 
+## Included programs
+      black-list        - manage black listed phone numbers
+      get-cdrs          - get CDRs (Call Display Records)
+      get-did-info      - get DID (Direct Inward Dialing) info about the phone(s)
+      phone-recording   - turn recording of calls for a phone line on or off
+      send-sms-message  - send an SMS (short Message Service) message
+
 ## Example usages
 This will print CDR records from November 11 to November 22, in reverse order
 such that records will be numbered from oldest to newest:
@@ -16,47 +23,51 @@ such that records will be numbered from oldest to newest:
 
 This will print last months CDR records and the cost for account 'home':
 
-    % get-cdrs --last-month --cost --account home
+      % get-cdrs --last-month --cost --account home
 
 This will print the filter rules along with filter IDs to make changes to an existing rule:
 
-    % black-list
+      % black-list
 
 This will set a filter rule giving a Busy signal instead of the default NoService message:
 
-    % black-list --note 'Bad Evil Dudes' --busy  416-555-1212 
+      % black-list --note 'Bad Evil Dudes' --busy  416-555-1212 
 
 This will change the previous filter rule from Busy to Hangup instead:
 
-    % black-list --note 'Bad Evil Dudes' --hangup --filterid 12345 416-555-1212
+      % black-list --note 'Bad Evil Dudes' --hangup --filterid 12345 416-555-1212
 
-This will print all data about each DID, with the phone-number preceded by the (sub)account-name
+This will print all data about each DID, with the phone-number preceded by the (sub)account-name:
 
-    % get-did-info --account --all
+      % get-did-info --account --all
 
 This will send a SMS message to barney (an alias set up in the config file):
 
-    % send-sms-message -r barney Time for a beer
+      % send-sms-message -r barney Time for a beer
+
+This will turn recording on for the default phone number listed in your config file:
+
+      % phone-recording on
 
 There is a help option with each program.  For eg:
 
-    % get-cdrs --help
+      % get-cdrs --help
 
-    usage: get-cdrs [options]*
-        [-a|--account]     account-name
-        [-c|--config]      config-file
-        [-d|--debug]       (debugging output)
-        [-f|--from]        YYYY-MM-DD (FROM date)
-        [-h|--help]        (help)
-        [-p|--padding]     number (padding between output fields (default=3)
-        [-q|--quiet]       (quiet.  No headings and titles)
-        [-r|--reverse]     (reverse date order of CDR output)
-        [-s|--sheldon]
-        [-t|--to]          YYYY-MM-DD (TO date)
-        [-C|--cost]        (total up costs and duration of CDRs)
-        [-L|--last-month]  (want CDR records for LAST month)
-        [-T|--this-month]  (want CDR records for THIS month)
-        [-V|--version]     (print version of this program)
+      usage: get-cdrs [options]*
+          [-a|--account]     account-name
+          [-c|--config]      config-file
+          [-d|--debug]       (debugging output)
+          [-f|--from]        YYYY-MM-DD (FROM date)
+          [-h|--help]        (help)
+          [-p|--padding]     number (padding between output fields (default=3)
+          [-q|--quiet]       (quiet.  No headings and titles)
+          [-r|--reverse]     (reverse date order of CDR output)
+          [-s|--sheldon]
+          [-t|--to]          YYYY-MM-DD (TO date)
+          [-C|--cost]        (total up costs and duration of CDRs)
+          [-L|--last-month]  (want CDR records for LAST month)
+          [-T|--this-month]  (want CDR records for THIS month)
+          [-V|--version]     (print version of this program)
 
 ## API setup.
 You need to set up your voip.ms service to permit access to it.  This includes
