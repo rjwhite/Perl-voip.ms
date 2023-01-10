@@ -221,3 +221,9 @@
         README.md:
             - added section showing what programs are included
             - inproved formatting
+
+0.2.2   Jan 9, 2023:
+        phone-recording.plx:
+            - if --quiet is given don't print message if the value is
+              already the same.  No longer make it an error message and
+              return from main as successful (0) instead of error (1).

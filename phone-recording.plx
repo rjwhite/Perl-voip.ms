@@ -46,7 +46,7 @@ use Data::Dumper ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.2" ;
+my $G_version    = "v0.2.2" ;
 my $G_debug_flag = 0 ;
 
 # Constants
@@ -275,9 +275,12 @@ sub main {
     # if we made it to here, we know that $recording_flag is set
 
     if ( $record_value eq $recording_flag ) {
-        my $err = "'$C_RECORD_KEY' already set to $recording_flag " .
-                  "for phone# $original_ph" ;
-        error( $err, $C_FATAL ) ;
+        if ( $verbose_flag  ) {
+            my $msg = "'$C_RECORD_KEY' is already set to $recording_flag " .
+                    "for phone# $original_ph" ;
+            print( "$msg\n" ) ;
+        }
+        return(0) ;
     }
 
     $required_fields{ $C_RECORD_KEY } = $recording_flag ;
