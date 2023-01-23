@@ -227,3 +227,10 @@
             - if --quiet is given don't print message if the value is
               already the same.  No longer make it an error message and
               return from main as successful (0) instead of error (1).
+
+0.3     Jan 22, 2023:
+        phone-recording.plx:
+            - fixed (Github) Issue #1.  turning recording on/off was wiping
+              out any value that may have been set for voice-mail handling.
+              Needed to add 'voicemail' field to required_fields that need
+              to be collected and preserved.

@@ -46,7 +46,7 @@ use Data::Dumper ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.2.2" ;
+my $G_version    = "v0.3" ;
 my $G_debug_flag = 0 ;
 
 # Constants
@@ -246,6 +246,10 @@ sub main {
     if ( not defined( $dids )) {
         error( "could not get \'dids\' info array in JSON return", $C_FATAL ) ;
     }
+
+    # These are the only fields that seem to need to have their values
+    # preserved between calls for "getDIDsInfo" and "setDIDInfo"
+
     my %required_fields = (
         'did'           => undef,
         'routing'       => undef,
@@ -253,6 +257,7 @@ sub main {
         'dialtime'      => undef,
         'cnam',         => undef,
         'billing_type'  => undef,
+        'voicemail'     => undef,
         $C_RECORD_KEY   => undef,
     ) ;
     return(1) if get_fields( $dids, \%required_fields ) ;
@@ -375,9 +380,9 @@ sub voip_service {
 }
 
 
-# extract the data we need for the return data from the voip.ms API
-# the 2nd argument is the reference to the HASH containing keys of
-# data we are intested in, all with values set to undef.  Those
+# extract the data we need for the return data from the voip.ms API.
+# The 2nd argument is the reference to the HASH containing keys of
+# data we are interested in, all with values set to undef.  Those
 # values will be updated with data collected from the hash reference
 # in the 1st argument.  All of the keys provided must end up having
 # their values set for the call to be considered successful.
