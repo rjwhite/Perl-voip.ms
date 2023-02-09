@@ -12,7 +12,7 @@ you are interested in, the order and size of the fields, and the titles.
       black-list        - manage black listed phone numbers
       get-cdrs          - get CDRs (Call Display Records)
       get-did-info      - get DID (Direct Inward Dialing) info about the phone(s)
-      phone-recording   - turn recording of calls for a phone line on or off
+      phone-recording   - turn recording of incoming calls for a phone line on or off
       send-sms-message  - send an SMS (short Message Service) message
 
 ## Example usages
@@ -45,7 +45,7 @@ This will send a SMS message to barney (an alias set up in the config file):
 
       % send-sms-message -r barney Time for a beer
 
-This will turn recording on for the default phone number listed in your config file:
+This will turn recording on for incoming calls for the default phone number listed in your config file:
 
       % phone-recording on
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
-# set/unset/check the recording flag for a phone number using the voip.ms API
+# set/unset/check the recording flag for INCOMING calls for a phone
+# number using the voip.ms API
 # usage:
 #    phone_recording on/off/check
 # eg:
@@ -46,7 +47,7 @@ use Data::Dumper ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.3" ;
+my $G_version    = "v0.3.1" ;
 my $G_debug_flag = 0 ;
 
 # Constants

@@ -220,7 +220,7 @@
 0.2.1   Dec 30, 2022:
         README.md:
             - added section showing what programs are included
-            - inproved formatting
+            - improved formatting
 
 0.2.2   Jan 9, 2023:
         phone-recording.plx:
@@ -234,3 +234,37 @@
               out any value that may have been set for voice-mail handling.
               Needed to add 'voicemail' field to required_fields that need
               to be collected and preserved.
+
+0.3.1   Feb, 9, 2023:
+        clarify that phone-recording only turns phone recordings on/off
+        for INCOMING calls.  Updated:
+            doc/man/man1/phone-recording.1:
+            README.md:
+            phone-recording.plx:
+
+        To better understand why the program doesn't turn recording on/off
+        for BOTH incoming AND outgoing calls, it is worth looking at:
+        https://wiki.voip.ms/article/Call_Recordings#Recording_Outgoing_Calls
+
+        At the time of this writing, I'm not even sure if you can change
+        outgoing call recording values using the API.  It uses a different
+        mechanism than incoming, and it also depends on if it is the main
+        or sub-account.
+
+        For the value 'record_calls' you want changed for OUTGOING calls,
+        via the web-site, you'd use one of:
+            Main Menu    -> Account Settings    -> General -> Record Calls BETA
+            Sub Accounts -> Manage Sub Accounts -> Edit Sub Account
+        whereas for incoming calls, you'd specify the DID, via:
+            DID numbers -> Manage DIDs -> <choose DID> -> Record Calls BETA
+
+        Looking at the voip.ms WSDL file and things get even messier.
+        While there is a setSubAccount operation, there isn't a getSubAccount
+        to get values before to ensure you set everything correctly.
+        As discovered in version 0.3, just setting one value via the API
+        can cause other values to reset if you don't (re)supply them
+        as well.  So a blind setSubAccount might be highly dangerous
+        without being able to do a GET beforehand.  This will take more
+        investigation.
+
+

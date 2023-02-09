@@ -1,6 +1,6 @@
 .TH phone-recording 1
 .SH NAME
-phone-recording \- turn recording on or off, or check value for a phone number
+phone-recording \- turn recording on or off, or check value, for incoming calls
 .SH SYNOPSIS
 .B phone-recording
 [
@@ -26,7 +26,7 @@ then debugging is also displayed for config file handling
 print usage and exit.
 .TP
 \fB\-p|--phone\fR phone-number
-phone-number to turn recording on or off, or to check current value
+phone-number to turn recording on or off for incoming calls, or to check current value
 .TP
 \fB\-q|--quiet\fR
 Turn off status messages.  Only print error messages
@@ -42,7 +42,7 @@ Set 'record_calls' to 1 for phone number 555-666-7777
 555-123-4567 currently has 'record_calls' set to '1' (on)
 .SH DESCRIPTION
 .I phone-recording
-turns recording on or off for a phone number, or checks the current value,
+turns recording on or off for \fIincoming\fP calls for a phone number, or checks the current value,
 from a number belonging to the user at Voip.ms.
 The default phone number belonging to the user is found in the
 config file .voip-ms.conf in the HOME directory.  The phone number used can be changed
