@@ -53,9 +53,9 @@ There is a help option with each program.  For eg:
 
       % get-cdrs --help
 
-      usage: get-cdrs [options]*
+      usage: get-cdrs.plx [options]*
           [-a|--account]     account-name
-          [-c|--config]      config-file
+          [-c|--config]      config-file (default=/home/rj/.voip-ms.conf)
           [-d|--debug]       (debugging output)
           [-f|--from]        YYYY-MM-DD (FROM date)
           [-h|--help]        (help)
@@ -65,10 +65,11 @@ There is a help option with each program.  For eg:
           [-s|--sheldon]
           [-t|--to]          YYYY-MM-DD (TO date)
           [-C|--cost]        (total up costs and duration of CDRs)
+          [-I|--ignore]      (want ignored CDRs specified in config file)
           [-L|--last-month]  (want CDR records for LAST month)
           [-T|--this-month]  (want CDR records for THIS month)
-          [-V|--version]     (print version of this program)
-
+          [-V|--version]     (print version of this program (v0.4))
+  
 ## API setup.
 You need to set up your voip.ms service to permit access to it.  This includes
 providing which IP addresses can use it.  Please see the following URL for instructions:

@@ -4,7 +4,7 @@ get-cdrs \- get CDR records for phone lines using voip.ms API
 .SH SYNOPSIS
 .B get-cdrs
 [
-.B \-dhqrsCVLT
+.B \-dhqrsCIVLT
 ]
 [
 .B \-a account-name
@@ -57,6 +57,9 @@ use the given date as the TO date
 \fB\-C|--cost\fR
 total up costs and duration of CDRs
 .TP
+\fB\-I|--ignore\fR
+ignore the config entries for 'ignore-cdrs' and print all CDR's
+.TP
 \fB\-L|--last-month\fR
 want CDR records for LAST month
 .TP
@@ -105,15 +108,16 @@ verify it is correct by using this program output and comparing it to the time s
 see on your calls on the web-site, or better yet, against a call you just made where you know
 the correct time it was made.
 .PP
-To use this program, you will have to set up access for the IP number you are running this program
-from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+To use this program, you will have to set up access for the IP number you are running
+this program from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
 .SH CONFIG FILE
 The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
 is used for several programs that use the voip.ms API.
 The config file is shared, mainly so there is a single centralized location for authentication data for access 
 to the API.
 .PP
-The required sections in the config file for the \fIget-cdrs\fP program are:
+The required sections in the config file for the \fIget-cdrs\fP program
+are 'authentication', 'time', and 'cdrs'.
 .PP
 .RS 5n
 .TP
@@ -165,8 +169,22 @@ real field names, then the field-name will be used as the title, with the first 
 The 'order' specifies the order of output of the fields, as well as which fields are wanted.  The available 
 fields are date, callerid, destination, description, duration, rate, total, and disposition.
 .PP
-The 'cdrs-wanted' specify which classifiction of CDR records are wanted.  If the value of 1 is given,
+The 'cdrs-wanted' specify which classification of CDR records are wanted.  If the value of 1 is given,
 then they are wanted.  There are 4 different classes of CDRs:  answered, noanswer, busy and failed.
+.PP
+There are also optional keywords of 'timeout' and 'ignore-cdrs' that can be given
+in the 'cdrs' section:
+.nf
+
+    timeout             = 120
+
+    ignore-cdrs (array) = 'Call Recording'
+.fi
+.PP
+The 'ignore-cdrs' can provide one or more CDR's that have the
+given description to ignore.The values given must be an exact match.
+.PP
+The optional timeout is in seconds and has a default of 30 seconds.
 .SH ENVIRONMENT VARIABLES
 VOIP_MS_CONFIG_FILE
 .br

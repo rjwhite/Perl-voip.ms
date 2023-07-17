@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.11" ;
+my $G_version    = "v0.4" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -61,6 +61,7 @@ sub main {
     my $quiet_flag   = 0 ;
     my $reverse_flag = 0 ;
     my $costs_flag   = 0 ;
+    my $ignore_flag  = 0 ;      # set if we want 'ignore-cdrs' from config
     my $from_date    = "" ;
     my $to_date      = "" ;
     my $padding         = 3 ;
@@ -90,6 +91,8 @@ sub main {
             $padding = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--reverse" )) {
             $reverse_flag++ ;
+        } elsif (( $arg eq "-I" ) or ( $arg eq "--ignore" )) {
+            $ignore_flag++ ;
         } elsif (( $arg eq "-a" ) or ( $arg eq "--account" )) {
             $account = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-C" ) or ( $arg eq "--cost" )) {
@@ -255,7 +258,7 @@ sub main {
 
     if ( $help_flag ) {
         printf "usage: %s [options]*\n" .
-            "%s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+            "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
             $G_progname,
             "\t[-a|--account]     account-name\n",
             "\t[-c|--config]      config-file (default=$config_file)\n",
@@ -263,15 +266,16 @@ sub main {
             "\t[-f|--from]        YYYY-MM-DD (FROM date)\n",
             "\t[-h|--help]        (help)\n",
             "\t[-p|--padding]     number (padding between output fields " .
-                "(default=$padding)\n",
+                "(default=$padding))\n",
             "\t[-q|--quiet]       (quiet.  No headings and titles)\n",
             "\t[-r|--reverse]     (reverse date order of CDR output)\n",
             "\t[-s|--sheldon]\n",
             "\t[-t|--to]          YYYY-MM-DD (TO date)\n",
             "\t[-C|--cost]        (total up costs and duration of CDRs)\n",
+            "\t[-I|--ignore]      (show ignored CDRs as specified in config file)\n",
             "\t[-L|--last-month]  (want CDR records for LAST month)\n",
             "\t[-T|--this-month]  (want CDR records for THIS month)\n",
-            "\t[-V|--version]     (print version of this program)\n" ;
+            "\t[-V|--version]     (print version of this program ($G_version))\n" ;
 
         return(0) ;
     }
@@ -385,6 +389,26 @@ sub main {
     dprint( "TO   date = $to_date" ) ;
     dprint( "USER = \'$user\' PASS = \'$pass\' TIMEZONE = $timezone" ) ;
 
+    # see if we want to ignore any CDRs
+    my @ignore_cdrs = () ;
+    my %ignore_cdrs = () ;
+    if ( $ignore_flag == 0 ) {
+        if ( $got_keywords{ 'ignore-cdrs' } ) {
+            @ignore_cdrs = $cfg1->get_values( 'cdrs', 'ignore-cdrs' ) ;
+            if ( $cfg1->errors() ) {
+                my @errors = $cfg1->errors() ;
+                foreach my $error ( @errors ) {
+                    print STDERR "$G_progname: $error\n" ;
+                }
+                return(1) ;
+            }
+            foreach my $ignore ( @ignore_cdrs ) {
+                dprint( "will ignore CDRs with description: \'$ignore\'" ) ;
+                $ignore_cdrs{ $ignore } = 1 ;
+            }
+        }
+    }
+
     # finally...  build the URL we need
     my $method = "getCDR" ;
 
@@ -473,11 +497,24 @@ sub main {
     foreach my $cdr_hash ( @{$cdrs} ) {
         $num_records++ ;
     }
-    dprint( "Found $num_records CDR records" ) ;
+    dprint( "Found TOTAL of $num_records CDR records" ) ;
+
+    # we may not want some CDRs if 'ignore-cdrs' was set
+
+    my @cdrs = () ;
+    foreach my $cdr_hash ( @{$cdrs} ) {
+        my $description = ${$cdr_hash}{ 'description' } ;
+        if ( $ignore_cdrs{ $description } ) {
+            dprint( "ignoring CDR record with description: \'$description\'" ) ;
+            next ;
+        }
+        push( @cdrs, $cdr_hash ) ;
+    }
+    $num_records = @cdrs ;
+    dprint( "processing $num_records CDR records" ) ;
 
     # the user may want the records in reverse order
 
-    my @cdrs = @{$cdrs} ;
     if ( $reverse_flag ) {
         @cdrs = reverse( @{$cdrs} ) ;
     }

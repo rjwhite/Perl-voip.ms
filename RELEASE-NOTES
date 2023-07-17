@@ -267,4 +267,27 @@
         without being able to do a GET beforehand.  This will take more
         investigation.
 
+0.4     July 16, 2023:
+        - get-cdrs.plx:
+            now looks for an optional config entry for 'ignore-cdrs' in
+            section 'cdrs', for an array of 'description' to ignore.
+            An example could be 'Call Recording' to not repeat CDR's
+            that are just recordings.
 
+            Also added a new option -I/--ignore to ignore the 'ignore-cdrs'
+            entry in the config if it exists - so to report everything.
+            Is this counter-intuitive...?  
+                -I/--ignore to ignore an ignore entry?
+            That's why I made it -I (capital) instead of -i (lower-case).
+
+            Maybe it would be useful to have a -i (lower-case) ignore option
+            to add additional entries to ignore along with those given in
+            the config. dunno.  maybe later?  see how it goes.
+
+            Print the version number in the usage
+        - doc/man/man1/get-cdrs.1:
+            updated to show above new config keyword, new option, etc
+        - README.md:
+            updated usage of get-cdrs to show new -I/--ignore option
+        - .voip-ms.conf:
+            added (commented-out): ignore-cdrs (array) = 'Call Recording' 
