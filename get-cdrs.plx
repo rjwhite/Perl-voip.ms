@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.4" ;
+my $G_version    = "v0.5" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -64,8 +64,8 @@ sub main {
     my $ignore_flag  = 0 ;      # set if we want 'ignore-cdrs' from config
     my $from_date    = "" ;
     my $to_date      = "" ;
-    my $padding         = 3 ;
-    my $account      = "" ;
+    my $padding      = 3 ;
+    my $account      = undef ;
     my ( $day, $month, $year ) = (localtime())[3,4,5] ;
     $year += 1900 ;
     $month++ ;
@@ -95,6 +95,11 @@ sub main {
             $ignore_flag++ ;
         } elsif (( $arg eq "-a" ) or ( $arg eq "--account" )) {
             $account = $ARGV[ ++$i ] ;
+            if ( not defined( $account )) {
+                my $error = "account name not provided with -a option" ;
+                print STDERR "$G_progname: $error\n" ;
+                return(1) ;
+            }
         } elsif (( $arg eq "-C" ) or ( $arg eq "--cost" )) {
             $costs_flag++ ;
         } elsif (( $arg eq "-s" ) or ( $arg eq "--sheldon" )) {
@@ -438,7 +443,7 @@ sub main {
 
     # if we want a specific account
 
-    if ( $account ne "" ) {
+    if ( defined( $account )) {
         $cdrs_we_want .= "account=${account}&" ;
     }
 
@@ -515,9 +520,7 @@ sub main {
 
     # the user may want the records in reverse order
 
-    if ( $reverse_flag ) {
-        @cdrs = reverse( @{$cdrs} ) ;
-    }
+    @cdrs = reverse( @cdrs ) if ( $reverse_flag ) ;
 
     if ( $num_records == 0 ) {
         print "No CDR records were found\n" ;
@@ -615,7 +618,6 @@ sub main {
         }
     }
 
-
     my $total_cost       = 0 ;
     my $total_duration   = 0 ;
     my %account_cost     = () ;
@@ -626,7 +628,7 @@ sub main {
         my $pretty_from = pretty_date( $from_date ) ;
         my $pretty_to   = pretty_date( $to_date ) ;
         print "$num_records CDR records found from $pretty_from to $pretty_to" ;
-        if ( $account ne "" ) {
+        if ( defined( $account )) {
             print " for account \'$account\'" ;
         }
         print "\n\n" ;

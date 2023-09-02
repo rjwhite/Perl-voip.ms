@@ -291,3 +291,12 @@
             updated usage of get-cdrs to show new -I/--ignore option
         - .voip-ms.conf:
             added (commented-out): ignore-cdrs (array) = 'Call Recording' 
+
+0.5     Sep 2, 2023:
+        - get-cdrs.plx:
+            - fixes problem of uninitialized value when -a/--account
+              option is used but no value is given
+            - fixed problem of using -r/--reverse option working in
+              conjunction with the 'ignore-cdrs' directive in the config
+              file.  Was showing CDRs with 'Call Recording' when they
+              are meant to be suppressed
