@@ -300,3 +300,56 @@
               conjunction with the 'ignore-cdrs' directive in the config
               file.  Was showing CDRs with 'Call Recording' when they
               are meant to be suppressed
+
+0.6     Sep 6, 2023:
+        - get-cdrs.plx:
+            - wrote new subroutines: get_DID_from_account, get_json_data
+            - usage output improved
+            - refactoring
+            - if debug statement given more than once, print out the
+              contents of the JSON CDR record that matches our criteria
+            - created new option:  -E/--expected-account option.
+              Using this option will print CDRs in the (sub)account that
+              probably most people would expect when using the -a/--account
+              option.  In other words, if you have an account called 'doodah',
+              then using options:
+                    --account doodah  --expected-account
+              then all calls to AND from the (sub)account doodah will be shown.
+              Without the --expected-account option, you will see the same output
+              you would see if you used the voip.ms web-site to see your CDR's.
+
+              I had created a ticket (# OBIEL5) with voip.ms believing their
+              behaviour was broken, with CDR's having the wrong 'account'
+              field, but apparently, their behaviour (from their response) is:
+
+                "Note that ALL incoming calls will show up <my main account>
+                 as the account. This is because incoming calls are
+                 filtered per number, not per sub-accounts, in fact,
+                 sub-accounts are not related to the number.
+
+                 On the other hand, outgoing calls will always be filtered
+                 per sub-account, since this is the entity that actually
+                 makes the outgoing call."
+
+              I believe that if you have a (sub)account called doodah, you
+              would want to see ALL calls associated with that number, both
+              incoming and outgoing, to show up with that account when you
+              specifically ask for it (with the --account option).
+
+              In order to be consistent with the voip.ms behaviour (via their
+              web-site), and to be backward compatible with previous versions of
+              this software, you need to use the -E/--expected-account option to
+              get the new (preferred?) behaviour.
+              UNLESS you set the option 'show-in-expected-account' to 'yes'
+              in the 'cdrs' section in the config file.
+        - .voip-ms.conf
+            - shows example of 'accounts' for DID data in 'cdrs' section for
+              using the getDIDsInfo method.  This will result in a huge
+              speedup for get-cdrs if the -E/--expected-account option is used
+              by avoiding an API call using the getDIDsInfo method
+            - added 'show-in-expected-account = no' in 'cdrs' section
+        - README.md:
+            - updated to show latest usage output
+        - doc/man/man1/get-cdrs.1:
+            - updated.  Added a 'EXPECTED-ACCOUNT OPTION' section for further
+              explanation for the -E/--expected-account option.

@@ -4,7 +4,7 @@ get-cdrs \- get CDR records for phone lines using voip.ms API
 .SH SYNOPSIS
 .B get-cdrs
 [
-.B \-dhqrsCIVLT
+.B \-dhqrsCEITV
 ]
 [
 .B \-a account-name
@@ -31,22 +31,23 @@ use the given config file instead of the default ~/.voip-ms.conf
 .TP
 \fB\-d|--debug\fR
 print debugging messages.  If the -d/--debug option is used more than once,
-then debugging is also displayed for config file handling
+then debugging is also displayed for config file handling and shows contents
+of CDR records
 .TP
 \fB\-f|--from\fR YYYY-MM-DD
-use the given date as the FROM date.
+use the given date as the FROM date
 .TP
 \fB\-h|--help\fR
-print usage and exit.
+print usage and exit
 .TP
 \fB\-p|--padding\fR number
-use the number given as the number of spaces between fields printed.
+use the number given as the number of spaces between fields printed
 .TP
 \fB\-q|--quiet\fR
 Don't show any headings or titles
 .TP
 \fB\-r|--reverse\fR
-Reverse the order of the CDR's printed.  Print oldest to newest.
+Reverse the order of the CDR's printed.  Print oldest to newest
 .TP
 \fB\-s|--sheldon\fR
 who is Sheldon...?
@@ -56,6 +57,10 @@ use the given date as the TO date
 .TP
 \fB\-C|--cost\fR
 total up costs and duration of CDRs
+.TP
+\fB\-E|--expected-account\fR
+show CDR records for BOTH incoming and outgoing calls associated with the account given
+by the -a/--account option.  See section EXPECTED-ACCOUNT OPTION for further explanation
 .TP
 \fB\-I|--ignore\fR
 ignore the config entries for 'ignore-cdrs' and print all CDR's
@@ -71,7 +76,7 @@ print version of the program and exit
 .SH EXAMPLES
 .TP
 get-cdrs --from 2017-11-15 --to 2017-11-22 --reverse
-prints the CDR records from Nov 15, 2017 to Nov 22, 1017 from oldest to latest.
+prints the CDR records from Nov 15, 2017 to Nov 22, 1017 from oldest to latest
 .TP
 get-cdrs --last-month --cost --account 123456
 prints the CDRs records for all of last month, but only for the account number '123456'
@@ -110,6 +115,88 @@ the correct time it was made.
 .PP
 To use this program, you will have to set up access for the IP number you are running
 this program from.  Please see the URL \fBhttps://voip.ms/m/api.php\fP  for setting up access.
+.SH EXPECTED-ACCOUNT OPTION
+There is an option called --expected-account or -E which probably needs further explanation.
+If you have several accounts, made up of a main account and one or more sub-accounts, then
+when you ask to see the CDRs just for some specific account, then you're probably assuming 
+you would see both the incoming and outgoing calls for the DID number associated with that
+account.  But you'd probably be surprised to find that some CDR's don't show up but instead
+show up under your main account.  I thought this was a bug with voip.ms, and submitted a
+ticket (# OBIEL5), but apparently this is part of the design.  The response from voip.ms
+was as follows:
+.RS
+.PP
+.ll -7
+Note that ALL incoming calls will show up <my-main-account> as the account. This is because
+incoming calls are filtered per number, not per subaccounts, in fact,
+subaccounts are not related to the number.
+.PP
+On the other hand, outgoing calls will always be filtered per subaccount, since
+this is the entity that actually makes the outgoing call.
+.RE
+.ll +7
+.PP
+This may not be the behaviour you were expecting.  If you prefer to see both incoming
+and outgoing calls for the number that you had associated with the DID when you set up
+the sub-account, then you can use the --expected-account or -E option.  This will cause
+the program to look up your account information to get the DID number, and then after
+collecting all CDR records, only show those that had that number as either an incoming
+or outgoing call.  It does this by doing an additional API call using the getDIDsInfo
+method.
+.PP
+Doing this additional getDIDsInfo API call can cause the program to be really slow.
+One way to speed it up is by avoiding that additional API call by already having that
+account information in your config file, in the 'cdrs' section called 'accounts'.
+For example:
+.sp
+.nf
+    accounts (hash) = \\
+        123456              = 555-123-4567, \\
+        123456_hamilton     = 555-123-8901, \\
+        123456_my_alarm     = 555-123-6790, \\
+        mom                 = 555-123-1234
+.fi
+.sp
+.PP
+This will dramatically speed up the program by avoiding the extra API call.  But it
+is important that the info is correct.    You can get this information by running the
+program:  get-did-info --account.
+.PP
+Note the unusual account name 'mom' in the
+above example.  This is not a real (sub)account.  Because of the way the program works
+using the --expected-account option, you can put in a dummy account here in the config file
+and it will look for CDR records, both incoming and outgoing, with that DID number set
+to it.  So lets say you wanted to see all your calls with your Mom last month, you could
+do a:
+.sp
+.ti +5
+get-cdrs --last-month --expected-account --account mom
+.sp
+even though you don't
+really have an (sub)account called 'mom' set up at voip.ms.  In this case, you aren't
+treating it as a DID line that can accept and call any number, you are simply getting
+all CDR records that have that number showing as an incoming or outgoing call, regardless
+of what account they are really on.
+.PP
+If you wanted the --expected-account behavior by default, you can omit the option and instead
+have a directive in the 'cdrs' section of your config file of:
+.sp
+.ti +5
+show-in-expected-account = yes
+.PP
+This option has the interesting behaviour that if you use one of your accounts to call the
+other account, like say in the above config example you used 555-123-4567 (account 123456)
+to call 123456_hamilton (sub-account 123456_hamilton), then you would see the CDR records
+when given either of the account names 123456 or 123456_hamilton using the --account option,
+since the DID numbers listed with the accounts will be in the CDR record and be matched.
+.PP
+This means that it can be misleading if you also use the --cost option since it will show
+costs for each case and may lead you to think you have been charged twice by voip.ms.  However,
+that is not the case since voip.ms will only have the CDR as assigned to one 'account'
+whereas here we are more concerned about seeing the CDR associated with the account that
+seems more intuitive.  If you are concerned about getting accurate costs per account,
+then do not use the --expected-account option and set 'show-in-expected-account' in the config file
+to 'no', and then you will get the default voip.ms behaviour when you specify a specific (sub)account.
 .SH CONFIG FILE
 The config file \fB.voip-ms.conf\fP, found in the user HOME directory,
 is used for several programs that use the voip.ms API.
@@ -149,14 +236,47 @@ are 'authentication', 'time', and 'cdrs'.
                           total       = 'Total cost', \\
                           disposition = Disposition
 
-#    field-size (hash)   = date        = 22, \\
-#                          callerid    = 35, \\
-#                          destination = 15, \\
-#                          description = 22, \\
-#                          duration    = 12, \\
-#                          rate        = 12, \\
-#                          total       = 12, \\
-#                          disposition = 12
+    # field-size (hash)   = date        = 22, \\
+    #                       callerid    = 35, \\
+    #                       destination = 15, \\
+    #                       description = 22, \\
+    #                       duration    = 12, \\
+    #                       rate        = 12, \\
+    #                       total       = 12, \\
+    #                       disposition = 12
+
+    # set show-in-expected-account to yes if you want your CDR's to show up
+    # with the expected account name for BOTH incoming and outgoing calls
+    # when using the --account option.  The option --expected-account for
+    # get-cdrs will also have this effect.  Otherwise, ALL incoming calls
+    # to any of your (sub)accounts will appear under your primary account
+    # name instead of the (sub)account the number is associated with.
+    # That is the behaviour of voip.ms and will do this with their web-site
+    # CDR lookups
+
+    show-in-expected-account = no
+
+    # don't print CDR's with these Descriptions:
+
+    ignore-cdrs (array) = 'Call Recording'
+
+    # To avoid an extra API call if get-cdrs uses the --expected-account option.
+    # This will be a huge speedup for get-cdrs --expected-account
+    # It's ok to add spaces, dashes, whatever here for readability, so
+    # long as the values are quoted if there is whitespace
+    # To look up your DID data, you can do a:  get-did-info --account
+
+    # But you can also create dummy accounts here for specialized CDR
+    # reports.  Like if you wanted to see records just for your Mom by
+    #    get-cdrs --account mom
+    # since it will end up reporting CDRs found that are assigned here
+    # to 'mom'.
+
+    accounts (hash) = \\
+        123456              = 555-123-4567, \\
+        123456_hamilton     = 555-123-8901, \\
+        123456_my_alarm     = 555-123-6790, \\
+        mom                 = 555-123-1234
 .fi
 .RE
 .PP
@@ -182,7 +302,7 @@ in the 'cdrs' section:
 .fi
 .PP
 The 'ignore-cdrs' can provide one or more CDR's that have the
-given description to ignore.The values given must be an exact match.
+given description to ignore.  The values given must be an exact match.
 .PP
 The optional timeout is in seconds and has a default of 30 seconds.
 .SH ENVIRONMENT VARIABLES

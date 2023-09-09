@@ -19,7 +19,7 @@ you are interested in, the order and size of the fields, and the titles.
 This will print CDR records from November 11 to November 22, in reverse order
 such that records will be numbered from oldest to newest:
 
-    % get-cdrs --from 2017-11-15 --to 2017-11-22 --reverse
+      % get-cdrs --from 2017-11-15 --to 2017-11-22 --reverse
 
 This will print last months CDR records and the cost for account 'home':
 
@@ -52,24 +52,25 @@ This will turn recording on for incoming calls for the default phone number list
 There is a help option with each program.  For eg:
 
       % get-cdrs --help
-
       usage: get-cdrs.plx [options]*
-          [-a|--account]     account-name
-          [-c|--config]      config-file (default=/home/rj/.voip-ms.conf)
-          [-d|--debug]       (debugging output)
-          [-f|--from]        YYYY-MM-DD (FROM date)
-          [-h|--help]        (help)
-          [-p|--padding]     number (padding between output fields (default=3)
-          [-q|--quiet]       (quiet.  No headings and titles)
-          [-r|--reverse]     (reverse date order of CDR output)
+          [-a|--account str]         account name
+          [-c|--config file]         config-file (default=/home/rj/.voip-ms.conf)
+          [-d|--debug]               debug output.  Twice for more info
+          [-f|--from YYYY-MM-DD]     FROM date
+          [-h|--help]                help
+          [-p|--padding num]         padding between output fields   (default=3)
+          [-q|--quiet]               quiet.  No headings and titles
+          [-r|--reverse]             reverse date order of CDR output
           [-s|--sheldon]
-          [-t|--to]          YYYY-MM-DD (TO date)
-          [-C|--cost]        (total up costs and duration of CDRs)
-          [-I|--ignore]      (want ignored CDRs specified in config file)
-          [-L|--last-month]  (want CDR records for LAST month)
-          [-T|--this-month]  (want CDR records for THIS month)
-          [-V|--version]     (print version of this program (v0.4))
-  
+          [-t|--to YYYY-MM-DD]       TO date
+          [-C|--cost]                total up costs and duration of CDRs
+          [-E|--expected-account]    CDRs expected in each (sub)account
+          [-I|--ignore]              show ignored CDRs as specified in config file
+          [-L|--last-month]          want CDR records for LAST month
+          [-T|--this-month]          want CDR records for THIS month
+          [-V|--version]             version of this program (v0.6)
+
+
 ## API setup.
 You need to set up your voip.ms service to permit access to it.  This includes
 providing which IP addresses can use it.  Please see the following URL for instructions:

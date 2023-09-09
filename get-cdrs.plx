@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.5" ;
+my $G_version    = "v0.6" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -58,6 +58,7 @@ sub main {
     my $error ;
 
     my $help_flag    = 0 ;
+    my $expect_flag  = 0 ;
     my $quiet_flag   = 0 ;
     my $reverse_flag = 0 ;
     my $costs_flag   = 0 ;
@@ -83,6 +84,8 @@ sub main {
             return(0) ;
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
+        } elsif (( $arg eq "-E" ) or ( $arg eq "--expected-account" )) {
+            $expect_flag++ ;
         } elsif (( $arg eq "-q" ) or ( $arg eq "--quiet" )) {
             $quiet_flag++ ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
@@ -263,26 +266,27 @@ sub main {
 
     if ( $help_flag ) {
         printf "usage: %s [options]*\n" .
-            "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+            "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
             $G_progname,
-            "\t[-a|--account]     account-name\n",
-            "\t[-c|--config]      config-file (default=$config_file)\n",
-            "\t[-d|--debug]       (debugging output)\n",
-            "\t[-f|--from]        YYYY-MM-DD (FROM date)\n",
-            "\t[-h|--help]        (help)\n",
-            "\t[-p|--padding]     number (padding between output fields " .
-                "(default=$padding))\n",
-            "\t[-q|--quiet]       (quiet.  No headings and titles)\n",
-            "\t[-r|--reverse]     (reverse date order of CDR output)\n",
+            "\t[-a|--account str]         account name\n",
+            "\t[-c|--config file]         config-file (default=$config_file)\n",
+            "\t[-d|--debug]               debug output.  Twice for more info\n",
+            "\t[-f|--from YYYY-MM-DD]     FROM date\n",
+            "\t[-h|--help]                help\n",
+            "\t[-p|--padding num]         padding between output fields " .
+                "  (default=$padding)\n",
+            "\t[-q|--quiet]               quiet.  No headings and titles\n",
+            "\t[-r|--reverse]             reverse date order of CDR output\n",
             "\t[-s|--sheldon]\n",
-            "\t[-t|--to]          YYYY-MM-DD (TO date)\n",
-            "\t[-C|--cost]        (total up costs and duration of CDRs)\n",
-            "\t[-I|--ignore]      (show ignored CDRs as specified in config file)\n",
-            "\t[-L|--last-month]  (want CDR records for LAST month)\n",
-            "\t[-T|--this-month]  (want CDR records for THIS month)\n",
-            "\t[-V|--version]     (print version of this program ($G_version))\n" ;
-
-        return(0) ;
+            "\t[-t|--to YYYY-MM-DD]       TO date\n",
+            "\t[-C|--cost]                total up costs and duration of CDRs\n",
+            "\t[-E|--expected-account]    CDRs expected in each (sub)account\n",
+            "\t[-I|--ignore]              show ignored CDRs as specified in " .
+                "config file\n",
+            "\t[-L|--last-month]          want CDR records for LAST month\n",
+            "\t[-T|--this-month]          want CDR records for THIS month\n",
+            "\t[-V|--version]             version of this program ($G_version)\n" ;
+        return  (0) ;
     }
 
     # good to go.  get authentication info
@@ -304,7 +308,10 @@ sub main {
     my $user = $auth_values{ 'user' } ;
     my $pass = $auth_values{ 'pass' } ;
 
+    # get the timeout
+
     my $timeout = $cfg1->get_values( 'cdrs', 'timeout' ) ;
+    $cfg1->clear_errors()  if ( $cfg1->errors() ) ;
     if ( not defined( $timeout )) {
         dprint( "Using default timeout of $C_DEFAULT_TIMEOUT seconds" ) ;
         $timeout = $C_DEFAULT_TIMEOUT ;
@@ -323,6 +330,18 @@ sub main {
     if ( $cfg1->errors() ) {
         $timezone = $DEFAULT_TIMEZONE ;
         $cfg1->clear_errors() ;
+    }
+
+    # see if we want to change the default behaviour in which (sub)account
+    # a CDR is associated with
+
+    my $cdr_acct = $cfg1->get_values( 'cdrs', 'show-in-expected-account' ) ;
+    $cfg1->clear_errors()  if ( $cfg1->errors() ) ;
+    if ( defined( $cdr_acct )) {
+        if ( $cdr_acct =~ /yes/i ) {
+            $expect_flag++ ;
+            dprint( "show-in-expected-account set to YES in config" ) ;
+        }
     }
 
     # get the fields we want, and the order to print them
@@ -432,8 +451,7 @@ sub main {
 
     my $cdrs_we_want = "" ;
     foreach my $key ( keys( %cdrs_wanted )) {
-        my $item = $key ;
-        $item =~ tr/A-Z/a-z/ ;  # make lower case
+        my $item = $key ; $item =~ tr/A-Z/a-z/ ;  # make lower case
         my $val = $cdrs_wanted{ $key } ;
         if ( defined( $val ) and ( $val ne 0 )) {
             $cdrs_we_want .= "${item}=1&" ;
@@ -441,13 +459,78 @@ sub main {
         }
     }
 
-    # if we want a specific account
+    # If we specified an account and we want the voip.ms default 
+    # (broken) behaviour
 
     if ( defined( $account )) {
-        $cdrs_we_want .= "account=${account}&" ;
+        dprint( "we ONLY want account $account" ) ;
+        $cdrs_we_want .= "account=${account}&" if ( $expect_flag == 0 ) ;
+    }
+    chop( $cdrs_we_want ) if ( $cdrs_we_want ne "" ) ;  # remove trailing '&'
+
+    # if we want a specific account
+
+    # We used to modify the REST URL to also contain account=${account}
+    # believing that both outgoing and incoming calls associated with the
+    # phone number for that (sub)account would be reported.  But No.
+    # See Ticket # OBIEL5.  From voip.ms:
+    #
+    #    Note that ALL incoming calls will show up 220306 as the account
+    #    This is because incoming calls are filtered per number, not
+    #    per subaccounts, in fact, subaccounts are not related to the number.
+    #
+    #    On the other hand, outgoing calls will always be filtered per
+    #    subaccount, since this is the entity that actually makes the
+    #    outgoing call.
+    #
+    # So we have to handle this differently
+
+    my $did_number = undef ;
+    if ( defined( $account ) and $expect_flag ) {
+
+        # we need the DID number.
+        # First see if we can avoid an API call using getDIDsInfo by seeing
+        # if we've already seeded our config file with a list of 'accounts'
+
+        if ( $got_keywords{ 'accounts' } ) {
+            # check that the type is a hash
+            my $type = $cfg1->get_type( 'cdrs', 'accounts') ;
+            if ( $type !~ /hash/i ) {
+                my $err = "non-hash entries from config for cdrs/accounts" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            }
+            my %accounts = $cfg1->get_values( 'cdrs', 'accounts' ) ;
+            if ( defined( $accounts{ $account } )) {
+                $did_number = $accounts{ $account } ;
+                $did_number =~ s/\D//g ;    # make it just numbers
+                dprint( "found ACCOUNT of $account = \'$did_number\'" ) ;
+            }
+        }
+
+        if ( defined( $did_number )) {
+            dprint( "skipping API call of getDIDsInfo to get DID" ) ;
+        } else {
+            dprint( "looking up DID number for account $account" ) ;
+            dprint( "Using timeout of $timeout secs for getDIDsInfo" ) ;
+
+            # find out the DID number associated with the (sub)account given
+            my $get_did_method  = 'getDIDsInfo' ;
+            return(1) if ( get_DID_from_account( $account, $user, $pass, 
+                                                $get_did_method, $timeout,
+                                                \$did_number )) ;
+        }
+
+        if (( not defined( $did_number )) or ( $did_number eq 1 )) {
+            my $error = "can't get DID number from account: $account" ;
+            print STDERR "$G_progname: $error\n" ;
+            return(1) ;
+        }
+        dprint( "DID for account $account is $did_number" ) ;
     }
 
-    chop( $cdrs_we_want ) if ( $cdrs_we_want ne "" ) ;  # remove trailing '&'
+    # build our URL.  Get *all* CDR's - even if we only want a specific
+    # (sub)account
 
     my $url = "https://voip.ms/api/v1/rest.php" .
         "?api_username=${user}&api_password=${pass}&method=${method}" .
@@ -455,31 +538,10 @@ sub main {
         "&timezone=${timezone}" ;
     dprint( "URL = \'$url\'" ) ;
 
-    my $ua = LWP::UserAgent->new( timeout => $timeout );
+    my $json = undef ;
+    my $status = undef ;
+    return(1) if ( get_json_data( $url, $timeout, \$json, \$status )) ;
 
-    # you need to look like a browser to get past Cloudflare
-    $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
-    $ua->cookie_jar( {} ) ;     # maybe needed by Cloudflare in future?
-    $ua->env_proxy;
-    my $response = $ua->get( $url ) ;
-
-    my $response_body;
-    if ( $response->is_success ) {
-        $response_body = $response->decoded_content ;
-    } else {
-        my $reason = $response->status_line ;
-        print STDERR "$G_progname: $reason\n" ;
-        return(1) ;
-    }
-
-    # decode the JSON
-
-    if ( $response_body !~ /^\{/ ) {
-        print STDERR "$G_progname: No JSON structure returned\n" ;
-    }
-    my $json = decode_json( $response_body ) ;
-
-    my $status = $json->{ 'status' } ;
     if ( $status ne "success" ) {
         if ( $status eq "no_cdr" ) {
             my $pretty_from = pretty_date( $from_date ) ;
@@ -493,8 +555,7 @@ sub main {
         return(1) ;
     }
 
-    my $cdrs   = $json->{ 'cdr' } ;
-    dprint( "status = $status" ) ;
+    my $cdrs = $json->{ 'cdr' } ;
 
     # get the number of records found
 
@@ -503,6 +564,8 @@ sub main {
         $num_records++ ;
     }
     dprint( "Found TOTAL of $num_records CDR records" ) ;
+
+    # we have a bunch of CDR's .  See if we need to eliminate some.
 
     # we may not want some CDRs if 'ignore-cdrs' was set
 
@@ -513,10 +576,37 @@ sub main {
             dprint( "ignoring CDR record with description: \'$description\'" ) ;
             next ;
         }
+
+        # see if we want a specific account.  If so, we'll check both the
+        # 'destination' and the 'callerid' to see if we match the number
+        # we got that is associated with the account name given.
+        # Note that the 'calledid' could be of the form:
+        #       "\"TORONTO ON\" <5551234567>",
+
+        if ( defined( $account ) and $expect_flag ) {
+            my $want_it = 0 ;
+            my $destination = ${$cdr_hash}{ 'destination' } ;
+            $destination =~ s/\D//g ;   # get rid of all non-digits
+            $destination =~ s/^1// ;    # get rid of long-distance '1' prefix
+            if ( $did_number eq $destination ) {
+                dprint( "DESTINATION match: $destination for acct $account" ) ;
+                $want_it++ ;
+            }
+
+            my $callerid = ${$cdr_hash}{ 'callerid' } ;
+            $callerid =~ s/\D//g ;  # get rid of all non-digits
+            $callerid =~ s/^1// ;    # get rid of long-distance '1' prefix
+            if ( $did_number eq $callerid ) {
+                dprint( "CALLERID match: $callerid for acct $account" ) ;
+                $want_it++ ;
+            }
+            next if ( ! $want_it ) ;
+        }
         push( @cdrs, $cdr_hash ) ;
     }
+
     $num_records = @cdrs ;
-    dprint( "processing $num_records CDR records" ) ;
+    dprint( "processing $num_records matching CDR records" ) ;
 
     # the user may want the records in reverse order
 
@@ -578,6 +668,12 @@ sub main {
 
     my $count = 0 ;
     foreach my $cdr_hash ( @cdrs ) {
+        if ( $G_debug > 1 ) {
+            my $pretty_json_text = JSON::to_json($cdr_hash, {utf8 => 1, pretty => 1}) ;
+            print "debug: CDR record:" ;
+                print "$pretty_json_text\n" ;
+        }
+
         foreach my $field ( @fields ) {
             my $data = ${$cdr_hash}{ $field } ;
             my $data_len = length( $data ) ;
@@ -948,4 +1044,145 @@ sub find_config_file {
         $final_config = $c if ( -f $c ) ;
     }
     return( $final_config ) ;
+}
+
+
+# get the DID (line) for a given account
+# If there is an error, the efrror will be printed from this routine
+# and it will return with a value of 1.
+#
+# Arguments:
+#   1:  account name wanted
+#   2:  userid
+#   3:  password
+#   4:  method
+#   5:  timeout for request
+#   6:  reference of DID number to return
+# Returns one of:
+#   0:  OK
+#   1:  NOT ok
+# Globals:
+#   $G_progname
+
+sub get_DID_from_account {
+    my $account = shift ;
+    my $user    = shift ;
+    my $pass    = shift ;
+    my $method  = shift ;
+    my $timeout = shift ;
+    my $did_ref = shift ;
+
+    my $i_am = 'get_DID_from_account()' ;
+
+    # build our REST API to voip.ms
+
+    my $url = "https://voip.ms/api/v1/rest.php" .
+        "?api_username=${user}&api_password=${pass}&method=${method}" ;
+
+    dprint( "$i_am: URL = \'$url\'" ) ;
+
+    my $json   = undef ;
+    my $status = undef ;
+    return(1) if ( get_json_data( $url, $timeout, \$json, \$status )) ;
+
+    if ( $status ne "success" ) {
+        print STDERR "$G_progname: $i_am: JSON returned failed status. " .
+                        "(\'$status\')\n" ;
+        return(1) ;
+    }
+
+    my $dids = $json->{ 'dids' } ;
+    if ( not defined( $dids )) {
+        my $err = "could not get \'dids\' info array in JSON return data" ;
+        print STDERR "$G_progname: $i_am: $err\n" ;
+        return(1) ;
+    }
+
+    # now get our data
+
+    foreach my $hash_ref ( @{$dids} ) {
+        my $line = ${$hash_ref}{ 'did' } ;
+        continue if ( not defined( $line )) ;
+
+        my $acct = ${$hash_ref}{ 'routing' } ;
+        $acct =~ s/account:// ;
+        dprint( "$i_am: got DID $line for account $acct" ) ;
+        if ( $acct eq $account ) {
+            dprint( "$i_am: FOUND DID $line for account $account" ) ;
+            $line =~ s/ //g ;   # remove any spacing
+            $line =~ s/^1// ;   # remove any leading '1'
+            ${$did_ref} = $line ;
+            return(0) ;
+        }
+    }
+    my $err = "failed to find DID for account $account" ;
+    dprint( "$i_am: $err" ) ;
+    print STDERR "$G_progname: $i_am: $err\n" ;
+    return(1) ;         # not found
+}
+
+
+# Get some JSON data given a pre-built URL and a timeout
+# If there is an error, the error will be printed from this routine
+# and it will return with a value of 1.
+#
+# Arguments:
+#   1:  URL
+#   2:  timeout
+#   3:  reference of JSON data to return
+#   4:  reference of value of 'status' in JSON returned
+# Returns one of:
+#   0:  OK
+#   1:  NOT ok
+# Globals:
+#   $G_progname
+
+sub get_json_data {
+    my $url = shift ;
+    my $timeout = shift ;
+    my $json_ref = shift ;
+    my $status_ref = shift ;
+
+    my $i_am = "get_json_data()" ;
+    my $ua = LWP::UserAgent->new( timeout => $timeout );
+
+    # you need to look like a browser to get past Cloudflare
+    $ua->default_header( 'User-Agent' => 'Mozilla/5.0' ) ;
+    $ua->cookie_jar( {} ) ;     # maybe needed by Cloudflare in future?
+    $ua->env_proxy;
+    my $response = $ua->get( $url ) ;
+
+    my $response_body;
+    if ( $response->is_success ) {
+        $response_body = $response->decoded_content ;
+    } else {
+        my $reason = $response->status_line ;
+        print STDERR "$G_progname: $i_am: $reason\n" ;
+        return(1) ;
+    }
+
+    # decode the JSON
+
+    if ( $response_body !~ /^\{/ ) {
+        print STDERR "$G_progname: $i_am: no JSON structure returned\n" ;
+        return(1) ;
+    }
+    my $json = decode_json( $response_body ) ;
+    if ( not defined( $json )) {
+        my $err = "failed to decode JSON" ;
+        print STDERR "$G_progname: $i_am: $err\n" ;
+        return(1) ;
+    }
+
+    my $status = $json->{ 'status' } ;
+    if ( not defined( $status )) {
+        my $err = "undefined \'status\' in JSON return" ;
+        print STDERR "$G_progname: $i_am: $err\n" ;
+        return(1) ;
+    }
+    dprint( "$i_am: status = $status" ) ;
+
+    ${$status_ref} = $status ;
+    ${$json_ref}   = $json ;
+    return(0) ;
 }
