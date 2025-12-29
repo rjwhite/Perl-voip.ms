@@ -35,7 +35,7 @@ use JSON ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.11" ;
+my $G_version    = "v1.0" ;
 my $G_debug      = 0 ;
 
 $G_progname     =~ s/^.*\/// ;
@@ -70,12 +70,27 @@ sub main {
             $all_info_flag++ ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
             $config_file = $ARGV[ ++$i ] ;
+            if ( not defined( $config_file )) {
+                my $err = "need to provide filename with --config option" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            }
+            if ( ! -f $config_file ) {
+                my $err = "no such config file: $config_file" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            }
         } elsif (( $arg eq "-d" ) or ( $arg eq "--debug" )) {
             $G_debug++ ;
         } elsif (( $arg eq "-A" ) or ( $arg eq "--account" )) {
             $account_names_flag++ ;
         } elsif (( $arg eq "-D" ) or ( $arg eq "--did" )) {
             $did = $ARGV[ ++$i ] ;
+            if ( not defined( $did )) {
+                my $err = "need to provide a DID number with --did option" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            }
         } elsif (( $arg eq "-V" ) or ( $arg eq "--version" )) {
             print "Program version: $G_version\n" ;
             print "Config module version: $Moxad::Config::VERSION\n" ;
@@ -103,6 +118,7 @@ sub main {
     $config_file = find_config_file( $config_file ) ;
     if ( not defined( $config_file )) {
         print STDERR "$G_progname: no config file found\n" ;
+        print STDERR "$G_progname: expecting $ENV{ HOME }/.voip-ms.conf\n" ;
         return(1) ;
     }
     dprint( "using config file: $config_file" ) ;
@@ -148,14 +164,13 @@ sub main {
         printf "usage: %s [options]*\n" .
             "%s %s %s %s %s %s %s",
             $G_progname,
-            "\t[-a|--all]           all info about did(s)\n",
-            "\t[-c|--config]        config-file (default=$config_file)\n",
-            "\t[-d|--debug]         (debugging output)\n",
-            "\t[-h|--help]          (help)\n",
-            "\t[-A|--account]       print (sub)account name(s) instead of DID\n",
-            "\t[-D|--did]           specific phone-number (which line)\n",
-            "\t[-V|--version]       (print version of this program)\n" ;
-
+            "\t[-a|--all]          show all info about did(s)\n",
+            "\t[-c|--config file]  default = $config_file\n",
+            "\t[-d|--debug]        debugging output\n",
+            "\t[-h|--help]         show usage\n",
+            "\t[-A|--account]      print (sub)account name(s) instead of DID\n",
+            "\t[-D|--did  str]     specific phone-number (which line)\n",
+            "\t[-V|--version]      version of this program ($G_version)\n" ;
         return(0) ;
     }
 
@@ -259,14 +274,14 @@ sub main {
     foreach my $hash_ref ( @{$dids} ) {
         $num_entries++ ;
         if ( $got_ordered_keys == 0 ) {
-            @ordered_keys = keys( %{$hash_ref} ) ;
+            @ordered_keys = sort( keys( %{$hash_ref} )) ;
 
             # get the maximum length of the keys
             foreach my $key ( @ordered_keys ) {
                 my $len = length( $key ) ;
                 $max_len = $len if ( $len > $max_len ) ;
             }
-            $max_len += 4 ;     # add some spacing
+            $max_len += 2 ;     # add some spacing
             dprint( "MAX length of keys in data is $max_len" ) ;
 
             # only want to do it once

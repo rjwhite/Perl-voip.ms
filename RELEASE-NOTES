@@ -353,3 +353,18 @@
         - doc/man/man1/get-cdrs.1:
             - updated.  Added a 'EXPECTED-ACCOUNT OPTION' section for further
               explanation for the -E/--expected-account option.
+
+1.0     Dec 29, 2025:
+        I see I really screwed up version numbers sometime back when I went
+        from .11 on Oct 21, 2021 to .02 on Dec 24, 2022, instead of 0.12.
+        Jump to 1.0 here to stop the continued mess.
+
+        - get-did-info:
+            - improved usage output for -h/--help option
+            - reduced extra spacing between keywords and data from 4 to 2
+            - more error checking if nothing provided for --did option
+            - sort the keywords in the output if the --all option given
+        - black-list.plx, get-cdrs.plx, send-sms-message.plx, get-did-info:
+            - check if no filename given with --config option
+            - check that file exists if --config option used
+            - print expected config file in error msg, if no config file found

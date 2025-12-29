@@ -33,7 +33,7 @@ use POSIX qw(mktime) ;
 
 # Globals 
 my $G_progname   = $0 ;
-my $G_version    = "v0.6" ;
+my $G_version    = "v1.0" ;
 my $G_debug      = 0 ;
 
 # Constants
@@ -90,6 +90,15 @@ sub main {
             $quiet_flag++ ;
         } elsif (( $arg eq "-c" ) or ( $arg eq "--config" )) {
             $config_file = $ARGV[ ++$i ] ;
+            if ( not defined( $config_file )) {
+                my $err = "need to provide filename with --config option" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            } elsif ( ! -f $config_file ) {
+                my $err = "no such file: $config_file" ;
+                print STDERR "$G_progname: $err\n" ;
+                return(1) ;
+            }
         } elsif (( $arg eq "-p" ) or ( $arg eq "--padding" )) {
             $padding = $ARGV[ ++$i ] ;
         } elsif (( $arg eq "-r" ) or ( $arg eq "--reverse" )) {
@@ -200,6 +209,7 @@ sub main {
     $config_file = find_config_file( $config_file ) ;
     if ( not defined( $config_file )) {
         print STDERR "$G_progname: no config file found\n" ;
+        print STDERR "$G_progname: expecting $ENV{ HOME }/.voip-ms.conf\n" ;
         return(1) ;
     }
     dprint( "using config file: $config_file" ) ;
